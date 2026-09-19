@@ -75,7 +75,9 @@ def predict_schedule(request: ScheduleRequest):
             detail="Gagal mengekspansi BOM — tidak ada sesi yang dihasilkan"
         )
 
-    optimized_sessions = run_optimizer(sessions, bom_routing, model, preprocessor)
+    optimized_sessions = run_optimizer(
+        sessions, bom_routing, model, preprocessor, month_str=request.month
+    )
     result = build_schedule(optimized_sessions, request.month, bom_routing)
 
     order_id = str(uuid.uuid4())[:8].upper()

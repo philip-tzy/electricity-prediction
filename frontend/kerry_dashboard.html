@@ -518,76 +518,124 @@ function mockSchedule(orders, month) {
   Object.entries(machines_master).forEach(([mid,m])=>{ (machine_by_type[m.type]||(machine_by_type[m.type]=[])).push(mid); });
 
   const [yr,mo] = month.split('-').map(Number);
-  let curDay = 1;
   const schedule = [];
   const used_machines = new Set();
-  const machine_assigned = {};
+  // Timeline per mesin (tanggal bebas berikutnya) + beban jam untuk load-balance
+  const machine_free_day = {};
+  const machine_load_hrs = {};
+  Object.keys(machines_master).forEach(mid => {
+    machine_free_day[mid] = 1;
+    machine_load_hrs[mid] = 0;
+  });
+  const po_ready_day = {};
+  const LOAD_PENALTY = 10;
 
+  function nextWorkDayNum(dayNum) {
+    let d = dayNum;
+    while ([0,6].includes(new Date(yr, mo-1, d).getDay())) d++;
+    return d;
+  }
+
+  function addWorkSpan(startDay, workDays) {
+    let start = nextWorkDayNum(startDay);
+    if (workDays <= 1) return [start, start];
+    let left = workDays - 1;
+    let end = start;
+    while (left > 0) {
+      end++;
+      if (![0,6].includes(new Date(yr, mo-1, end).getDay())) left--;
+    }
+    return [start, end];
+  }
+
+  // Step dulu, job besar dulu — selaras backend optimizer
+  const jobs = [];
   orders.forEach(order => {
     const route = bom_routes[order.product_id]||[];
-    route.forEach((step,si) => {
-      const mtype  = step.machine_type;
-      const candidates = machine_by_type[mtype]||[];
-      let mid = machine_assigned[mtype];
-      if (!mid) {
-        mid = candidates[0]||'M001';
-        machine_assigned[mtype] = mid;
-      }
-      used_machines.add(mid);
-
-      const pkw       = power_kw_by_type[mtype]||120;
-      const shift     = best_shifts_by_type[mtype]||'Shift 1';
-      const op_hours  = Math.min(order.quantity_mt * step.hpm + 0.8, 16);
-      const kwh       = Math.round(pkw * op_hours * shift_mult[shift] * 0.88 * (1 + step.step*0.03));
-      const days_span = Math.max(1, Math.ceil(op_hours/16));
-
-      // skip Sabtu (6) dan Minggu (0) untuk tanggal mulai
-      while([0,6].includes(new Date(yr,mo-1,curDay).getDay())) curDay++;
-      const sd = new Date(yr,mo-1,curDay);
-
-      // hitung end_date dengan melompati weekend
-      let workDaysLeft = days_span - 1;
-      const ed = new Date(sd);
-      while(workDaysLeft > 0) {
-        ed.setDate(ed.getDate()+1);
-        if(![0,6].includes(ed.getDay())) workDaysLeft--;
-      }
-      // pastikan end_date bukan weekend
-      while([0,6].includes(ed.getDay())) ed.setDate(ed.getDate()+1);
-
-      const mdata = machines_master[mid];
-      const wip = step.step>1?`Material ${prod_labels[order.product_id]} (WIP dari step ${step.step-1}) sudah menunggu di gudang.`:null;
-
-      schedule.push({
-        session_id    :`${order.product_id}-${order.quantity_mt}MT-step${step.step}`,
-        po_ref        :`${order.product_id}-${order.quantity_mt}MT`,
-        product_id    : order.product_id,
-        product_label : prod_labels[order.product_id]||order.product_id,
-        route_step    : step.step,
-        machine_id    : mid,
-        machine_label : mdata.label,
-        machine_type  : mtype,
-        process_desc  : step.hpm*order.quantity_mt>4?'Proses intensif':'Proses standar',
-        quantity_mt   : order.quantity_mt,
-        shift, op_hours, operating_hours:Math.round(op_hours*10)/10,
-        start_date: sd.toISOString().slice(0,10),
-        end_date  : ed.toISOString().slice(0,10),
-        predicted_kwh : kwh,
-        kwh_per_mt    : Math.round(kwh/order.quantity_mt*100)/100,
-        instruction   : `Jalankan ${mid} (${mtype}) untuk ${prod_labels[order.product_id]} sebanyak ${order.quantity_mt} MT mulai ${sd.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'short'})}. ${mtype==='Roaster'||mtype==='Extruder'?'Jangan matikan mesin di tengah proses.':''}`,
-        wip_note: wip,
-        status:'scheduled',
-      });
-      // geser ke hari kerja berikutnya
-      curDay = ed.getDate() + 1;
-      while([0,6].includes(new Date(yr,mo-1,curDay).getDay())) curDay++;
+    route.forEach(step => {
+      const op_hours = Math.round((order.quantity_mt * step.hpm + 0.8) * 10) / 10;
+      jobs.push({ order, step, op_hours: Math.max(op_hours, 1) });
     });
   });
+  jobs.sort((a,b) => a.step.step - b.step.step || b.op_hours - a.op_hours);
+
+  jobs.forEach(({ order, step, op_hours }) => {
+    const mtype = step.machine_type;
+    const candidates = machine_by_type[mtype]||[];
+    const shift = best_shifts_by_type[mtype]||'Shift 1';
+    const pkw = power_kw_by_type[mtype]||120;
+
+    // Pilih mesin: kWh + penalti beban (manfaatkan paralel)
+    let bestMid = candidates[0];
+    let bestScore = Infinity;
+    let bestKwh = Infinity;
+    candidates.forEach(mid => {
+      const kwh = Math.round(pkw * op_hours * shift_mult[shift] * 0.88 * (1 + step.step*0.03)
+        * (machines_master[mid].base_power_kw / pkw));
+      const score = kwh + LOAD_PENALTY * machine_load_hrs[mid];
+      if (score < bestScore || (score === bestScore && kwh < bestKwh)) {
+        bestScore = score;
+        bestKwh = kwh;
+        bestMid = mid;
+      }
+    });
+
+    used_machines.add(bestMid);
+    machine_load_hrs[bestMid] += op_hours;
+
+    const poRef = `${order.product_id}-${order.quantity_mt}MT`;
+    const earliest = Math.max(
+      machine_free_day[bestMid],
+      po_ready_day[poRef] || 1,
+      1
+    );
+    const days_span = Math.max(1, Math.ceil(op_hours / 16));
+    const [startN, endN] = addWorkSpan(earliest, days_span);
+    const sd = new Date(yr, mo-1, startN);
+    const ed = new Date(yr, mo-1, endN);
+
+    machine_free_day[bestMid] = nextWorkDayNum(endN + 1);
+    po_ready_day[poRef] = nextWorkDayNum(endN + 1);
+
+    const mdata = machines_master[bestMid];
+    const wip = step.step>1
+      ? `Material ${prod_labels[order.product_id]} (WIP dari step ${step.step-1}) sudah menunggu di gudang.`
+      : null;
+
+    schedule.push({
+      session_id    :`${poRef}-step${step.step}`,
+      po_ref        : poRef,
+      product_id    : order.product_id,
+      product_label : prod_labels[order.product_id]||order.product_id,
+      route_step    : step.step,
+      machine_id    : bestMid,
+      machine_label : mdata.label,
+      machine_type  : mtype,
+      process_desc  : step.hpm*order.quantity_mt>4?'Proses intensif':'Proses standar',
+      quantity_mt   : order.quantity_mt,
+      shift, op_hours, operating_hours: op_hours,
+      start_date: sd.toISOString().slice(0,10),
+      end_date  : ed.toISOString().slice(0,10),
+      predicted_kwh : bestKwh,
+      kwh_per_mt    : Math.round(bestKwh/order.quantity_mt*100)/100,
+      instruction   : `Jalankan ${bestMid} (${mtype}) untuk ${prod_labels[order.product_id]} sebanyak ${order.quantity_mt} MT mulai ${sd.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'short'})}${startN!==endN?' sampai '+ed.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'short'}):''}. ${mtype==='Roaster'||mtype==='Extruder'?'Jangan matikan mesin di tengah proses.':''}`,
+      wip_note: wip,
+      status:'scheduled',
+    });
+  });
+
+  schedule.sort((a,b) => a.start_date.localeCompare(b.start_date) || a.machine_id.localeCompare(b.machine_id));
 
   const total_kwh = schedule.reduce((s,r)=>s+r.predicted_kwh,0);
   const total_mt  = orders.reduce((s,o)=>s+o.quantity_mt,0);
   const all_dates = new Set();
-  schedule.forEach(r=>{ let d=new Date(r.start_date),e=new Date(r.end_date); while(d<=e){all_dates.add(d.toDateString());d.setDate(d.getDate()+1);} });
+  schedule.forEach(r=>{
+    let d=new Date(r.start_date), e=new Date(r.end_date);
+    while(d<=e){
+      if (![0,6].includes(d.getDay())) all_dates.add(d.toDateString());
+      d.setDate(d.getDate()+1);
+    }
+  });
   const op_days = all_dates.size;
   const manual_est = Math.round(total_kwh*1.18);
 
@@ -1042,54 +1090,78 @@ function renderResults(data) {
 // ── Gantt builder ─────────────────────────────────────────────────────────────
 function buildGantt(schedule, month) {
   const [yr, mo] = month.split('-').map(Number);
-  const daysInMonth = new Date(yr, mo, 0).getDate();
 
-  // Build machine → day map
+  // Rentang tanggal = seluruh sesi (boleh melampaui bulan jika kapasitas overflow)
+  const parseYMD0 = (s) => {
+    const [y, m, d] = s.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+  let minD = new Date(yr, mo - 1, 1);
+  let maxD = new Date(yr, mo, 0);
+  schedule.forEach(row => {
+    const s = parseYMD0(row.start_date);
+    const e = parseYMD0(row.end_date);
+    if (s < minD) minD = s;
+    if (e > maxD) maxD = e;
+  });
+
+  const DAYS = [];
+  for (let d = new Date(minD); d <= maxD; d.setDate(d.getDate() + 1)) {
+    DAYS.push(new Date(d));
+  }
+
+  const iso = (dt) => {
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const d = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+  const parseYMD = parseYMD0;
   const machDays = {};
   machines.forEach(m => { machDays[m.machine_id] = {}; });
 
   schedule.forEach(row => {
-    const start = new Date(row.start_date);
-    const end   = new Date(row.end_date);
+    const start = parseYMD(row.start_date);
+    const end   = parseYMD(row.end_date);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const day = d.getDate();
-      if (d.getMonth() + 1 === mo) {
-        if (!machDays[row.machine_id]) machDays[row.machine_id] = {};
-        machDays[row.machine_id][day] = row.product_id;
-      }
+      if (!machDays[row.machine_id]) machDays[row.machine_id] = {};
+      const key = iso(d);
+      const prev = machDays[row.machine_id][key];
+      machDays[row.machine_id][key] = prev && prev !== row.product_id
+        ? prev + '+' + row.product_id
+        : row.product_id;
     }
   });
 
-  const DAYS = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-  const COLOR_MAP = { Mixer:'pill-mixer', Roaster:'pill-roaster', Extruder:'pill-extruder', Packer:'pill-packer', Palletizer:'pill-palletizer' };
-
   const rows = machines.map(m => {
-    const bars = DAYS.map(d => {
-      const pid    = machDays[m.machine_id]?.[d];
-      const dayNum = new Date(yr, mo - 1, d).getDay();  // 0=Min, 6=Sab
+    const bars = DAYS.map(dt => {
+      const key    = iso(dt);
+      const pid    = machDays[m.machine_id]?.[key];
+      const dayNum = dt.getDay();
       const isWknd = dayNum === 0 || dayNum === 6;
-      const isSat  = dayNum === 6;
       const isSun  = dayNum === 0;
+      const label  = dt.getDate();
+      const outMonth = (dt.getMonth() + 1) !== mo;
+      const labelStyle = outMonth ? 'color:var(--amber);font-weight:600' : '';
 
       if (pid && !isWknd) {
+        const mainPid = String(pid).split('+')[0];
         return `<div class="day-col">
-          <div class="gantt-day-label">${d}</div>
-          <div class="day-bar bar-${pid}" title="${pid}">${pid}</div>
+          <div class="gantt-day-label" style="${labelStyle}" title="${key}">${label}</div>
+          <div class="day-bar bar-${mainPid}" title="${pid} @ ${key}">${mainPid}</div>
         </div>`;
       } else if (isWknd) {
-        // Sabtu = garis diagonal abu, Minggu = lebih gelap
         const wkndStyle = isSun
           ? 'background:repeating-linear-gradient(45deg,var(--red-dim),var(--red-dim) 2px,transparent 2px,transparent 6px);opacity:0.6'
           : 'background:repeating-linear-gradient(45deg,var(--border),var(--border) 2px,transparent 2px,transparent 6px);opacity:0.5';
         const dayColor  = isSun ? 'color:var(--red)' : 'color:var(--border-hi)';
-        const dayTitle  = isSun ? 'Min' : 'Sab';
         return `<div class="day-col">
-          <div class="gantt-day-label" style="${dayColor}" title="${dayTitle}">${d}</div>
+          <div class="gantt-day-label" style="${dayColor}" title="${isSun ? 'Min' : 'Sab'}">${label}</div>
           <div class="day-bar bar-empty" style="${wkndStyle}" title="Pabrik tutup"></div>
         </div>`;
       } else {
         return `<div class="day-col">
-          <div class="gantt-day-label">${d}</div>
+          <div class="gantt-day-label" style="${labelStyle}" title="${key}">${label}</div>
           <div class="day-bar bar-empty"></div>
         </div>`;
       }
@@ -1106,7 +1178,6 @@ function buildGantt(schedule, month) {
     </tr>`;
   }).join('');
 
-  // Build legend from products in schedule
   const usedPids = [...new Set(schedule.map(s => s.product_id))];
   const legendHtml = usedPids.map(pid => {
     const p = products.find(x => x.product_id === pid);
@@ -1116,12 +1187,17 @@ function buildGantt(schedule, month) {
     </div>`;
   }).join('');
 
+  const spillNote = maxD.getMonth() + 1 !== mo
+    ? `<div style="font-size:11px;color:var(--amber);margin:0 18px 10px">Catatan: volume order melebihi kapasitas bulan — jadwal berlanjut ke bulan berikutnya (label tanggal oranye).</div>`
+    : '';
+
   return `
     <div class="gantt-wrap" style="margin-bottom:24px">
       <div class="gantt-header">
         <div class="gantt-title">Gantt Chart — Jadwal Mesin</div>
         <div class="gantt-legend">${legendHtml}</div>
       </div>
+      ${spillNote}
       <div class="gantt-body">
         <table class="gantt-table"><tbody>${rows}</tbody></table>
       </div>
