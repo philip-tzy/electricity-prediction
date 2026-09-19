@@ -7,333 +7,1479 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
 <style>
 /* ── Reset & tokens ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg-base:    #0A1520;
-  --bg-surface: #0F1F2E;
-  --bg-raised:  #162637;
-  --bg-hover:   #1C3048;
-  --border:     #1E3448;
-  --border-hi:  #2A4A64;
+  --bg-base:     #F8FAFC;
+  --bg-surface:  #FFFFFF;
+  --bg-raised:   #F1F5F9;
+  --bg-hover:    #E8ECEF;
+  --border:      #E2E8F0;
+  --border-hi:   #CBD5E1;
 
-  --green:      #00C896;
-  --green-dim:  #00C89620;
-  --green-mid:  #00C89640;
-  --amber:      #F59E0B;
-  --amber-dim:  #F59E0B20;
-  --red:        #EF4444;
-  --red-dim:    #EF444420;
-  --blue:       #3B82F6;
-  --blue-dim:   #3B82F620;
-  --purple:     #8B5CF6;
-  --purple-dim: #8B5CF620;
+  --green:       #059669;
+  --green-dim:   #D1FAE520;
+  --green-mid:   #D1FAE540;
+  --green-light: #ECFDF5;
+  --amber:       #D97706;
+  --amber-dim:   #FEF3C7;
+  --amber-light: #FFFBEB;
+  --red:         #DC2626;
+  --red-dim:     #FEE2E2;
+  --red-light:   #FEF2F2;
+  --blue:        #2563EB;
+  --blue-dim:    #DBEAFE;
+  --blue-light:  #F0F9FF;
+  --purple:      #7C3AED;
+  --purple-dim:  #EDE9FE;
+  --purple-light:#F5F3FF;
+  --cyan:        #0891B2;
+  --pink:        #DB2777;
 
-  --text-hi:   #F0F6FF;
-  --text-mid:  #8BA4BE;
-  --text-lo:   #4A6480;
+  --text-hi:    #0F172A;
+  --text-mid:   #475569;
+  --text-lo:    #64748B;
 
-  --font:      'Inter', system-ui, sans-serif;
-  --mono:      'JetBrains Mono', monospace;
+  --font:       'Inter', system-ui, sans-serif;
+  --mono:       'JetBrains Mono', monospace;
 
-  --r-sm: 6px;
-  --r-md: 10px;
-  --r-lg: 14px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
 
-  --sidebar-w: 220px;
-  --header-h:  56px;
+  --sidebar-w-expanded: 240px;
+  --sidebar-w-collapsed: 64px;
+  --header-h: 60px;
+
+  --transition-ease: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Theme */
+  color-scheme: light;
 }
 
-html, body { height: 100%; background: var(--bg-base); color: var(--text-hi); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-base:     #0B1120;
+  --bg-surface:  #111827;
+  --bg-raised:   #1F2937;
+  --bg-hover:    #273449;
+  --border:      #334155;
+  --border-hi:   #475569;
+  --text-hi:    #F8FAFC;
+  --text-mid:   #CBD5E1;
+  --text-lo:    #94A3B8;
+  --green-light:#063A2C;
+  --green-dim:  #05966933;
+  --green-mid:  #05966955;
+  --amber-dim:  #78350F;
+  --amber-light:#451A03;
+  --red-dim:    #7F1D1D;
+  --red-light:  #450A0A;
+  --blue-dim:   #1E3A8A;
+  --blue-light: #172554;
+  --purple-dim: #4C1D95;
+  --purple-light:#2E1065;
+}
+
+html, body { 
+  height: 100%; 
+  background: var(--bg-base); 
+  color: var(--text-hi); 
+  font-family: var(--font); 
+  font-size: 14px; 
+  line-height: 1.5;
+}
 
 /* ── Layout shell ───────────────────────────────────────────── */
-.shell { display: grid; grid-template-columns: var(--sidebar-w) 1fr; grid-template-rows: var(--header-h) 1fr; height: 100vh; }
+.shell { 
+  display: grid; 
+  grid-template-columns: var(--sidebar-w-expanded) 1fr; 
+  grid-template-rows: var(--header-h) 1fr; 
+  height: 100vh;
+  transition: var(--transition-ease);
+}
+
+.shell.sidebar-collapsed {
+  grid-template-columns: var(--sidebar-w-collapsed) 1fr;
+}
 
 /* ── Header ─────────────────────────────────────────────────── */
 .header {
   grid-column: 1 / -1;
-  display: flex; align-items: center; gap: 16px;
+  display: flex; 
+  align-items: center; 
+  gap: 16px;
   padding: 0 24px;
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
-  position: relative; z-index: 10;
+  position: relative; 
+  z-index: 10;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
-.header-logo { display: flex; align-items: center; gap: 10px; }
+
+.header-hamburger {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  background: transparent;
+  border: none;
+  color: var(--text-hi);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-ease);
+  font-size: 20px;
+}
+
+@media (max-width: 768px) {
+  .header-hamburger { display: flex; }
+}
+
+.header-hamburger:hover {
+  background: var(--bg-raised);
+}
+
+.header-logo { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px;
+  flex-shrink: 0;
+}
+
 .logo-mark {
-  width: 28px; height: 28px; border-radius: 6px;
-  background: var(--green); display: flex; align-items: center; justify-content: center;
+  width: 36px; 
+  height: 36px; 
+  border-radius: var(--r-sm);
+  background: var(--green); 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.2);
 }
-.logo-mark svg { width: 16px; height: 16px; }
-.logo-wordmark { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; color: var(--text-hi); }
-.logo-sub { font-size: 11px; font-weight: 400; color: var(--text-lo); margin-top: -1px; }
-.header-divider { width: 1px; height: 28px; background: var(--border); margin: 0 4px; }
-.header-title { font-size: 13px; font-weight: 500; color: var(--text-mid); }
-.header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
-.api-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-mid); }
-.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
-.status-dot.offline { background: var(--red); box-shadow: 0 0 6px var(--red); }
-.header-time { font-family: var(--mono); font-size: 12px; color: var(--text-lo); }
+
+.logo-mark svg { width: 20px; height: 20px; }
+
+.logo-wordmark { 
+  font-size: 16px; 
+  font-weight: 700; 
+  letter-spacing: -0.3px; 
+  color: var(--text-hi);
+}
+
+.logo-sub { 
+  font-size: 12px; 
+  font-weight: 400; 
+  color: var(--text-lo); 
+  margin-top: -2px;
+}
+
+.header-divider { 
+  width: 1px; 
+  height: 32px; 
+  background: var(--border); 
+  margin: 0 8px;
+}
+
+.header-title { 
+  font-size: 14px; 
+  font-weight: 500; 
+  color: var(--text-mid);
+}
+
+.header-right { 
+  margin-left: auto; 
+  display: flex; 
+  align-items: center; 
+  gap: 16px;
+}
+
+.api-status { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  font-size: 12px; 
+  color: var(--text-mid);
+  background: var(--green-light);
+  padding: 6px 12px;
+  border-radius: var(--r-sm);
+}
+
+.status-dot { 
+  width: 8px; 
+  height: 8px; 
+  border-radius: 50%; 
+  background: var(--green); 
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.status-dot.offline { 
+  background: var(--red); 
+  box-shadow: 0 0 8px var(--red);
+}
+
+.header-time { 
+  font-family: var(--mono); 
+  font-size: 12px; 
+  color: var(--text-lo);
+}
+
+.theme-toggle {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-mid);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-ease);
+}
+
+.theme-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-hi);
+  border-color: var(--border-hi);
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+}
 
 /* ── Sidebar ─────────────────────────────────────────────────── */
 .sidebar {
   background: var(--bg-surface);
   border-right: 1px solid var(--border);
-  display: flex; flex-direction: column;
+  display: flex; 
+  flex-direction: column;
   overflow-y: auto;
+  transition: var(--transition-ease);
+  position: relative;
+  z-index: 20;
 }
-.nav-section { padding: 20px 14px 8px; }
-.nav-label { font-size: 10px; font-weight: 600; color: var(--text-lo); letter-spacing: 0.08em; text-transform: uppercase; padding: 0 8px; margin-bottom: 6px; }
+
+.sidebar.collapsed {
+  overflow: hidden;
+}
+
+:root[data-theme="dark"] .header,
+:root[data-theme="dark"] .sidebar,
+:root[data-theme="dark"] .gen-panel,
+:root[data-theme="dark"] .kpi-card,
+:root[data-theme="dark"] .kpi-big-card,
+:root[data-theme="dark"] .gantt-wrap,
+:root[data-theme="dark"] .sched-wrap,
+:root[data-theme="dark"] .breakdown-card,
+:root[data-theme="dark"] .field-input,
+:root[data-theme="dark"] .order-row select,
+:root[data-theme="dark"] .order-row input {
+  background: var(--bg-surface);
+  color: var(--text-hi);
+}
+
+:root[data-theme="dark"] .gantt-header,
+:root[data-theme="dark"] .sched-header,
+:root[data-theme="dark"] .breakdown-title,
+:root[data-theme="dark"] thead th,
+:root[data-theme="dark"] .gantt-cell-machine {
+  background: var(--bg-raised);
+}
+
+:root[data-theme="dark"] .machine-pill,
+:root[data-theme="dark"] .standby-chip {
+  background: var(--bg-raised);
+  border-color: var(--border);
+}
+
+:root[data-theme="dark"] .api-status {
+  background: var(--green-light);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: var(--header-h);
+    height: calc(100vh - var(--header-h));
+    width: var(--sidebar-w-expanded);
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.18);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-collapse-toggle {
+    display: none;
+  }
+
+  .mobile-overlay {
+    position: fixed;
+    inset: var(--header-h) 0 0 0;
+    z-index: 15;
+    background: rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+  }
+
+  .mobile-overlay.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .sidebar.collapsed {
+    width: var(--sidebar-w-expanded);
+  }
+
+  .sidebar.collapsed .nav-label,
+  .sidebar.collapsed .nav-text,
+  .sidebar.collapsed .machine-name,
+  .sidebar.collapsed .machine-type-tag {
+    opacity: 1;
+    width: auto;
+    height: auto;
+    overflow: visible;
+  }
+}
+
+.nav-section { 
+  padding: 20px 14px 8px;
+  transition: var(--transition-ease);
+}
+
+.sidebar.collapsed .nav-section {
+  padding: 16px 4px 8px;
+}
+
+.nav-label { 
+  font-size: 10px; 
+  font-weight: 700; 
+  color: var(--text-lo); 
+  letter-spacing: 0.12em; 
+  text-transform: uppercase; 
+  padding: 0 10px; 
+  margin-bottom: 8px;
+  opacity: 1;
+  transition: var(--transition-ease);
+  height: auto;
+  overflow: hidden;
+}
+
+.sidebar.collapsed .nav-label {
+  opacity: 0;
+  height: 0;
+  margin-bottom: 0;
+  padding: 0;
+}
+
 .nav-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-radius: var(--r-sm);
-  cursor: pointer; transition: background 0.15s;
-  font-size: 13px; font-weight: 400; color: var(--text-mid);
+  display: flex; 
+  align-items: center; 
+  gap: 12px;
+  padding: 10px 12px; 
+  border-radius: var(--r-sm);
+  cursor: pointer; 
+  transition: var(--transition-ease);
+  font-size: 13px; 
+  font-weight: 500; 
+  color: var(--text-mid);
   user-select: none;
+  white-space: nowrap;
+  position: relative;
 }
-.nav-item:hover { background: var(--bg-hover); color: var(--text-hi); }
-.nav-item.active { background: var(--green-dim); color: var(--green); font-weight: 500; }
-.nav-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.7; }
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  gap: 0;
+  padding: 10px 8px;
+}
+
+.nav-item:hover { 
+  background: var(--bg-hover); 
+  color: var(--text-hi);
+}
+
+.nav-item.active { 
+  background: var(--green-light); 
+  color: var(--green); 
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+.sidebar.collapsed .nav-item.active {
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+.nav-icon { 
+  width: 18px; 
+  height: 18px; 
+  flex-shrink: 0; 
+  opacity: 0.7;
+  transition: var(--transition-ease);
+}
+
+.nav-item:hover .nav-icon { opacity: 1; }
 .nav-item.active .nav-icon { opacity: 1; }
 
-.sidebar-machines { padding: 0 14px 16px; }
+.nav-text {
+  opacity: 1;
+  transition: var(--transition-ease);
+  width: auto;
+}
+
+.sidebar.collapsed .nav-text {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.sidebar-machines { 
+  padding: 0 10px 16px;
+  transition: var(--transition-ease);
+}
+
+.sidebar.collapsed .sidebar-machines {
+  padding: 0 4px 16px;
+}
+
 .machine-pill {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 6px 10px; margin-bottom: 3px;
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+  padding: 8px 10px; 
+  margin-bottom: 4px;
   border-radius: var(--r-sm);
   background: var(--bg-raised);
-  font-size: 11.5px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  transition: var(--transition-ease);
 }
-.machine-name { font-family: var(--mono); font-weight: 500; color: var(--text-hi); }
-.machine-type-tag { font-size: 10px; color: var(--text-lo); }
-.machine-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-.m-active { background: var(--green); }
+
+.sidebar.collapsed .machine-pill {
+  justify-content: center;
+  padding: 8px 4px;
+}
+
+.machine-name { 
+  font-family: var(--mono); 
+  font-weight: 600; 
+  color: var(--text-hi);
+  opacity: 1;
+  transition: var(--transition-ease);
+}
+
+.sidebar.collapsed .machine-name {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.machine-type-tag { 
+  font-size: 10px; 
+  color: var(--text-lo);
+  opacity: 1;
+  transition: var(--transition-ease);
+}
+
+.sidebar.collapsed .machine-type-tag {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.sidebar-collapse-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-lo);
+  cursor: pointer;
+  transition: var(--transition-ease);
+}
+
+.sidebar-collapse-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-hi);
+}
+
+.sidebar.collapsed .sidebar-collapse-toggle {
+  justify-content: center;
+  padding: 8px;
+}
+
+.sidebar-collapse-toggle svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease;
+}
+
+.mobile-overlay {
+  display: none;
+}
+
+.machine-dot { 
+  width: 8px; 
+  height: 8px; 
+  border-radius: 50%; 
+  flex-shrink: 0;
+  transition: var(--transition-ease);
+}
+
+.m-active { background: var(--green); box-shadow: 0 0 6px var(--green); }
 .m-standby { background: var(--text-lo); }
 
 /* ── Main content ────────────────────────────────────────────── */
 .main {
   overflow-y: auto;
-  display: flex; flex-direction: column;
+  display: flex; 
+  flex-direction: column;
+  background: var(--bg-base);
 }
 
 /* ── Page views ──────────────────────────────────────────────── */
-.page { display: none; flex-direction: column; height: 100%; }
+.page { 
+  display: none; 
+  flex-direction: column; 
+  height: 100%;
+}
+
 .page.active { display: flex; }
 
 /* ── Page: Generate Schedule ─────────────────────────────────── */
-.gen-layout { display: grid; grid-template-columns: 340px 1fr; height: 100%; }
-.gen-panel { padding: 24px; border-right: 1px solid var(--border); overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
-.gen-result { padding: 24px; overflow-y: auto; }
+.gen-layout { 
+  display: grid; 
+  grid-template-columns: 340px 1fr; 
+  height: 100%;
+  gap: 0;
+}
 
-.panel-title { font-size: 13px; font-weight: 600; color: var(--text-hi); margin-bottom: 14px; }
+.gen-panel { 
+  padding: 28px; 
+  border-right: 1px solid var(--border); 
+  overflow-y: auto; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 24px;
+  background: var(--bg-surface);
+}
+
+.gen-result { 
+  padding: 28px; 
+  overflow-y: auto;
+}
+
+.panel-title { 
+  font-size: 14px; 
+  font-weight: 700; 
+  color: var(--text-hi); 
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
 
 /* Month picker */
-.field-group { display: flex; flex-direction: column; gap: 6px; }
-.field-label { font-size: 12px; font-weight: 500; color: var(--text-mid); }
-.field-input {
-  background: var(--bg-raised); border: 1px solid var(--border-hi);
-  border-radius: var(--r-sm); padding: 9px 12px;
-  color: var(--text-hi); font-family: var(--mono); font-size: 13px;
-  outline: none; width: 100%;
-  transition: border-color 0.15s;
+.field-group { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 8px;
 }
-.field-input:focus { border-color: var(--green); }
-.field-input::placeholder { color: var(--text-lo); }
+
+.field-label { 
+  font-size: 12px; 
+  font-weight: 600; 
+  color: var(--text-hi);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.field-input {
+  background: var(--bg-surface); 
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm); 
+  padding: 10px 13px;
+  color: var(--text-hi); 
+  font-family: var(--mono); 
+  font-size: 13px;
+  outline: none; 
+  width: 100%;
+  transition: var(--transition-ease);
+}
+
+.field-input:focus { 
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--green-dim);
+}
+
+.field-input::placeholder { 
+  color: var(--text-lo);
+}
 
 /* Order rows */
-.order-list { display: flex; flex-direction: column; gap: 8px; }
+.order-list { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 10px;
+}
+
 .order-row {
-  display: grid; grid-template-columns: 1fr 100px 32px;
-  gap: 8px; align-items: center;
+  display: grid; 
+  grid-template-columns: 1fr 100px 36px;
+  gap: 10px; 
+  align-items: center;
 }
-.order-row select, .order-row input {
-  background: var(--bg-raised); border: 1px solid var(--border-hi);
-  border-radius: var(--r-sm); padding: 8px 10px;
-  color: var(--text-hi); font-size: 13px; outline: none;
-  transition: border-color 0.15s; width: 100%;
+
+.order-row select, 
+.order-row input {
+  background: var(--bg-surface); 
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm); 
+  padding: 10px 12px;
+  color: var(--text-hi); 
+  font-size: 13px; 
+  outline: none;
+  transition: var(--transition-ease);
+  width: 100%;
 }
-.order-row select:focus, .order-row input:focus { border-color: var(--green); }
-.order-row input { font-family: var(--mono); }
+
+.order-row select:focus, 
+.order-row input:focus { 
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px var(--green-dim);
+}
+
+.order-row input { 
+  font-family: var(--mono);
+}
+
 .order-row select.input-error,
 .order-row input.input-error {
   border-color: var(--red);
-  box-shadow: 0 0 0 2px var(--red-dim);
+  box-shadow: 0 0 0 3px var(--red-dim);
 }
+
 .order-row.row-error {
-  outline: 1px dashed var(--red);
+  outline: 2px dashed var(--red);
   outline-offset: 4px;
   border-radius: var(--r-sm);
 }
-.btn-remove {
-  width: 32px; height: 32px; border-radius: var(--r-sm);
-  background: var(--red-dim); border: 1px solid var(--red);
-  color: var(--red); cursor: pointer; display: flex;
-  align-items: center; justify-content: center;
-  font-size: 16px; line-height: 1; transition: background 0.15s;
-}
-.btn-remove:hover { background: var(--red); color: #fff; }
 
-.btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 18px; border-radius: var(--r-sm); font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; width: 100%; }
-.btn-ghost { background: var(--bg-raised); color: var(--text-mid); border: 1px solid var(--border-hi); }
-.btn-ghost:hover { color: var(--text-hi); border-color: var(--text-lo); }
-.btn-primary { background: var(--green); color: #001A12; font-weight: 600; }
-.btn-primary:hover { background: #00DEAD; }
-.btn-primary:disabled { background: var(--bg-raised); color: var(--text-lo); cursor: not-allowed; }
+.btn-remove {
+  width: 36px; 
+  height: 36px; 
+  border-radius: var(--r-sm);
+  background: var(--red-light); 
+  border: 1px solid var(--red-dim);
+  color: var(--red); 
+  cursor: pointer; 
+  display: flex;
+  align-items: center; 
+  justify-content: center;
+  font-size: 18px; 
+  line-height: 1; 
+  transition: var(--transition-ease);
+  font-weight: 600;
+}
+
+.btn-remove:hover { 
+  background: var(--red); 
+  color: #fff;
+  border-color: var(--red);
+}
+
+.btn { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 10px; 
+  padding: 11px 20px; 
+  border-radius: var(--r-sm); 
+  font-size: 13px; 
+  font-weight: 600; 
+  cursor: pointer; 
+  border: none; 
+  transition: var(--transition-ease);
+  width: 100%;
+  letter-spacing: 0.02em;
+}
+
+.btn-ghost { 
+  background: var(--bg-raised); 
+  color: var(--text-hi); 
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover { 
+  background: var(--bg-hover);
+  border-color: var(--border-hi);
+}
+
+.btn-primary { 
+  background: var(--green); 
+  color: #FFFFFF; 
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+}
+
+.btn-primary:hover { 
+  background: #047857;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
+}
+
+.btn-primary:disabled { 
+  background: var(--bg-raised); 
+  color: var(--text-lo); 
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  background: var(--blue);
+  color: #FFFFFF;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.btn-secondary:hover {
+  background: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
 
 /* ── Empty state ─────────────────────────────────────────────── */
 .empty-state {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 100%; gap: 12px; color: var(--text-lo);
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center;
+  height: 100%; 
+  gap: 14px; 
+  color: var(--text-lo);
+  text-align: center;
 }
-.empty-icon { width: 48px; height: 48px; opacity: 0.3; }
-.empty-text { font-size: 13px; text-align: center; }
+
+.empty-icon { 
+  width: 56px; 
+  height: 56px; 
+  opacity: 0.3;
+}
+
+.empty-text { 
+  font-size: 14px; 
+}
+
+.empty-text strong {
+  color: var(--text-mid);
+  font-weight: 600;
+}
 
 /* ── Loader ──────────────────────────────────────────────────── */
-.loader-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; }
-.spinner { width: 32px; height: 32px; border: 2px solid var(--border-hi); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.loader-wrap { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  height: 100%; 
+  gap: 16px;
+}
+
+.spinner { 
+  width: 36px; 
+  height: 36px; 
+  border: 3px solid var(--border); 
+  border-top-color: var(--green); 
+  border-radius: 50%; 
+  animation: spin 0.8s linear infinite;
+}
+
 @keyframes spin { to { transform: rotate(360deg); } }
-.loader-text { font-size: 13px; color: var(--text-mid); }
+
+.loader-text { 
+  font-size: 13px; 
+  color: var(--text-mid);
+  font-weight: 500;
+}
 
 /* ── KPI Bar ─────────────────────────────────────────────────── */
-.kpi-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
-.kpi-card {
-  background: var(--bg-raised); border: 1px solid var(--border);
-  border-radius: var(--r-md); padding: 14px 16px;
+.kpi-bar { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+  gap: 14px; 
+  margin-bottom: 28px;
 }
-.kpi-label { font-size: 11px; color: var(--text-lo); margin-bottom: 6px; font-weight: 500; }
-.kpi-value { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--text-hi); line-height: 1; }
-.kpi-sub { font-size: 11px; margin-top: 5px; }
-.kpi-good { color: var(--green); }
-.kpi-warn { color: var(--amber); }
+
+.kpi-card {
+  background: var(--bg-surface); 
+  border: 1px solid var(--border);
+  border-radius: var(--r-md); 
+  padding: 18px 20px;
+  transition: var(--transition-ease);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.kpi-card:hover {
+  border-color: var(--border-hi);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-label { 
+  font-size: 11px; 
+  color: var(--text-lo); 
+  margin-bottom: 8px; 
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kpi-value { 
+  font-family: var(--mono); 
+  font-size: 24px; 
+  font-weight: 700; 
+  color: var(--text-hi); 
+  line-height: 1;
+}
+
+.kpi-sub { 
+  font-size: 12px; 
+  margin-top: 7px;
+  color: var(--text-lo);
+}
+
+.kpi-good { color: var(--green); font-weight: 600; }
+.kpi-warn { color: var(--amber); font-weight: 600; }
 .kpi-neutral { color: var(--text-lo); }
 
 /* ── Gantt chart ─────────────────────────────────────────────── */
-.gantt-wrap { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; margin-bottom: 24px; }
-.gantt-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-.gantt-title { font-size: 13px; font-weight: 600; color: var(--text-hi); }
-.gantt-legend { display: flex; gap: 14px; }
-.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-lo); }
-.legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+.gantt-wrap { 
+  background: var(--bg-surface); 
+  border: 1px solid var(--border); 
+  border-radius: var(--r-lg); 
+  overflow: hidden; 
+  margin-bottom: 28px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
 
-.gantt-body { overflow-x: auto; }
-.gantt-table { min-width: 100%; border-collapse: collapse; }
-.gantt-row { border-bottom: 1px solid var(--border); }
-.gantt-row:last-child { border-bottom: none; }
-.gantt-cell-machine { width: 140px; padding: 12px 18px; white-space: nowrap; }
-.machine-label-g { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--text-hi); }
-.machine-type-g { font-size: 10px; color: var(--text-lo); margin-top: 2px; }
-.gantt-cell-bar { padding: 8px 12px; }
-.gantt-days { display: flex; gap: 3px; align-items: center; }
-.gantt-day-label { display: flex; justify-content: center; font-size: 9px; color: var(--text-lo); margin-bottom: 4px; font-family: var(--mono); }
-.day-col { display: flex; flex-direction: column; min-width: 32px; }
-.day-bar { height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px; }
-.bar-empty { background: var(--bg-raised); }
+.gantt-header { 
+  padding: 16px 20px; 
+  border-bottom: 1px solid var(--border); 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+  background: var(--bg-raised);
+}
+
+.gantt-title { 
+  font-size: 13px; 
+  font-weight: 700; 
+  color: var(--text-hi);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.gantt-legend { 
+  display: flex; 
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.legend-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+  font-size: 12px; 
+  color: var(--text-mid);
+  font-weight: 500;
+}
+
+.legend-dot { 
+  width: 10px; 
+  height: 10px; 
+  border-radius: 3px;
+}
+
+.gantt-body { 
+  overflow-x: auto;
+}
+
+.gantt-table { 
+  min-width: 100%; 
+  border-collapse: collapse;
+}
+
+.gantt-row { 
+  border-bottom: 1px solid var(--border);
+}
+
+.gantt-row:last-child { 
+  border-bottom: none;
+}
+
+.gantt-row:hover {
+  background: var(--bg-raised);
+}
+
+.gantt-cell-machine { 
+  width: 140px; 
+  padding: 14px 18px; 
+  white-space: nowrap;
+  background: var(--bg-raised);
+}
+
+.machine-label-g { 
+  font-family: var(--mono); 
+  font-size: 12px; 
+  font-weight: 700; 
+  color: var(--text-hi);
+}
+
+.machine-type-g { 
+  font-size: 11px; 
+  color: var(--text-lo); 
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+.gantt-cell-bar { 
+  padding: 10px 12px;
+}
+
+.gantt-days { 
+  display: flex; 
+  gap: 3px; 
+  align-items: center;
+}
+
+.gantt-day-label { 
+  display: flex; 
+  justify-content: center; 
+  font-size: 10px; 
+  color: var(--text-lo); 
+  margin-bottom: 5px; 
+  font-family: var(--mono);
+  font-weight: 600;
+}
+
+.day-col { 
+  display: flex; 
+  flex-direction: column; 
+  min-width: 34px;
+}
+
+.day-bar { 
+  height: 30px; 
+  border-radius: 5px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-size: 10px; 
+  font-weight: 700; 
+  letter-spacing: 0.02em; 
+  white-space: nowrap; 
+  overflow: hidden; 
+  text-overflow: ellipsis; 
+  padding: 0 4px;
+  transition: var(--transition-ease);
+}
+
+.day-bar:hover {
+  filter: brightness(0.95);
+  transform: scale(1.02);
+}
+
+.bar-empty { 
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+}
 
 /* Product colors for Gantt bars */
-.bar-P001 { background: #00C89640; color: var(--green); border: 1px solid #00C89660; }
-.bar-P002 { background: #3B82F640; color: var(--blue); border: 1px solid #3B82F660; }
-.bar-P003 { background: #8B5CF640; color: var(--purple); border: 1px solid #8B5CF660; }
-.bar-P004 { background: #F59E0B40; color: var(--amber); border: 1px solid #F59E0B60; }
-.bar-P005 { background: #EF444440; color: var(--red); border: 1px solid #EF444460; }
-.bar-P006 { background: #06B6D440; color: #06B6D4; border: 1px solid #06B6D460; }
-.bar-P007 { background: #EC489940; color: #EC4899; border: 1px solid #EC489960; }
+.bar-P001 { background: #D1FAE5; color: var(--green); border: 1px solid var(--green); font-weight: 700; }
+.bar-P002 { background: #DBEAFE; color: var(--blue); border: 1px solid var(--blue); font-weight: 700; }
+.bar-P003 { background: #EDE9FE; color: var(--purple); border: 1px solid var(--purple); font-weight: 700; }
+.bar-P004 { background: #FEF3C7; color: var(--amber); border: 1px solid var(--amber); font-weight: 700; }
+.bar-P005 { background: #FEE2E2; color: var(--red); border: 1px solid var(--red); font-weight: 700; }
+.bar-P006 { background: #CFFAFE; color: var(--cyan); border: 1px solid var(--cyan); font-weight: 700; }
+.bar-P007 { background: #FCE7F3; color: var(--pink); border: 1px solid var(--pink); font-weight: 700; }
 
 /* ── Schedule table ──────────────────────────────────────────── */
-.sched-wrap { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; margin-bottom: 24px; }
-.sched-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-.sched-title { font-size: 13px; font-weight: 600; color: var(--text-hi); }
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; }
+.sched-wrap { 
+  background: var(--bg-surface); 
+  border: 1px solid var(--border); 
+  border-radius: var(--r-lg); 
+  overflow: hidden; 
+  margin-bottom: 28px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.sched-header { 
+  padding: 16px 20px; 
+  border-bottom: 1px solid var(--border); 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between;
+  background: var(--bg-raised);
+}
+
+.sched-title { 
+  font-size: 13px; 
+  font-weight: 700; 
+  color: var(--text-hi);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table-wrap { 
+  overflow-x: auto;
+}
+
+table { 
+  width: 100%; 
+  border-collapse: collapse;
+}
+
 thead th {
-  padding: 10px 14px; font-size: 11px; font-weight: 600;
-  color: var(--text-lo); text-align: left;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap; background: var(--bg-raised);
+  padding: 12px 16px; 
+  font-size: 11px; 
+  font-weight: 700;
+  color: var(--text-lo); 
+  text-align: left;
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap; 
+  background: var(--bg-raised);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
-tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
-tbody tr:last-child { border-bottom: none; }
-tbody tr:hover { background: var(--bg-hover); }
-tbody td { padding: 11px 14px; font-size: 12.5px; vertical-align: middle; }
-.td-mono { font-family: var(--mono); font-size: 12px; }
+
+tbody tr { 
+  border-bottom: 1px solid var(--border); 
+  transition: var(--transition-ease);
+}
+
+tbody tr:last-child { 
+  border-bottom: none;
+}
+
+tbody tr:hover { 
+  background: var(--bg-raised);
+}
+
+tbody td { 
+  padding: 13px 16px; 
+  font-size: 13px; 
+  vertical-align: middle;
+  color: var(--text-hi);
+}
+
+.td-mono { 
+  font-family: var(--mono); 
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-mid);
+}
+
 .td-pill {
-  display: inline-flex; align-items: center; padding: 2px 8px;
-  border-radius: 4px; font-size: 11px; font-weight: 500;
+  display: inline-flex; 
+  align-items: center; 
+  padding: 4px 10px;
+  border-radius: 5px; 
+  font-size: 11px; 
+  font-weight: 700;
   white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
-.pill-mixer     { background: #00C89620; color: var(--green); }
-.pill-roaster   { background: #F59E0B20; color: var(--amber); }
-.pill-extruder  { background: #3B82F620; color: var(--blue); }
-.pill-packer    { background: #8B5CF620; color: var(--purple); }
-.pill-palletizer{ background: #EF444420; color: var(--red); }
-.pill-shift1    { background: #00C89614; color: var(--green); }
-.pill-shift2    { background: #F59E0B14; color: var(--amber); }
-.pill-shift3    { background: #8B5CF614; color: var(--purple); }
+
+.pill-mixer     { background: #D1FAE5; color: var(--green); }
+.pill-roaster   { background: #FEF3C7; color: var(--amber); }
+.pill-extruder  { background: #DBEAFE; color: var(--blue); }
+.pill-packer    { background: #EDE9FE; color: var(--purple); }
+.pill-palletizer{ background: #FEE2E2; color: var(--red); }
+.pill-shift1    { background: #D1FAE5; color: var(--green); }
+.pill-shift2    { background: #FEF3C7; color: var(--amber); }
+.pill-shift3    { background: #EDE9FE; color: var(--purple); }
 
 /* Instruction cell */
-.instruction-text { font-size: 11.5px; color: var(--text-mid); max-width: 280px; line-height: 1.4; }
-.wip-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; color: var(--amber); background: var(--amber-dim); border-radius: 4px; padding: 2px 6px; margin-top: 3px; }
+.instruction-text { 
+  font-size: 12px; 
+  color: var(--text-mid); 
+  max-width: 340px; 
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.wip-badge { 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 5px; 
+  font-size: 11px; 
+  color: #92400e;
+  background: var(--amber-dim); 
+  border-radius: 5px; 
+  padding: 4px 8px; 
+  margin-top: 5px;
+  font-weight: 600;
+}
 
 /* ── Standby machines ────────────────────────────────────────── */
-.standby-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
-.standby-chip {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: var(--r-sm);
-  background: var(--bg-raised); border: 1px solid var(--border);
-  font-size: 12px; color: var(--text-mid);
+.standby-row { 
+  display: flex; 
+  gap: 10px; 
+  flex-wrap: wrap; 
+  margin-bottom: 28px;
 }
-.standby-chip .machine-dot { background: var(--text-lo); }
+
+.standby-chip {
+  display: flex; 
+  align-items: center; 
+  gap: 8px;
+  padding: 8px 14px; 
+  border-radius: var(--r-sm);
+  background: var(--bg-raised); 
+  border: 1px solid var(--border);
+  font-size: 12px; 
+  color: var(--text-mid);
+  font-weight: 500;
+  transition: var(--transition-ease);
+}
+
+.standby-chip:hover {
+  border-color: var(--border-hi);
+  background: var(--bg-hover);
+}
+
+.standby-chip .machine-dot { 
+  background: var(--text-lo);
+}
 
 /* ── KPI Page ────────────────────────────────────────────────── */
-.kpi-page { padding: 24px; overflow-y: auto; }
-.kpi-grid-big { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+.kpi-page { 
+  padding: 28px; 
+  overflow-y: auto;
+}
+
+.kpi-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.kpi-page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-hi);
+}
+
+.btn-export {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--blue);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: var(--transition-ease);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+}
+
+.btn-export:hover {
+  background: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.kpi-grid-big { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+  gap: 18px; 
+  margin-bottom: 28px;
+}
+
 .kpi-big-card {
-  background: var(--bg-surface); border: 1px solid var(--border);
-  border-radius: var(--r-lg); padding: 20px 22px;
+  background: var(--bg-surface); 
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg); 
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: var(--transition-ease);
 }
-.kpi-big-label { font-size: 12px; color: var(--text-lo); margin-bottom: 10px; font-weight: 500; }
-.kpi-big-value { font-family: var(--mono); font-size: 32px; font-weight: 500; line-height: 1; }
-.kpi-big-sub { font-size: 12px; margin-top: 8px; }
+
+.kpi-big-card:hover {
+  border-color: var(--border-hi);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.kpi-big-label { 
+  font-size: 12px; 
+  color: var(--text-lo); 
+  margin-bottom: 12px; 
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kpi-big-value { 
+  font-family: var(--mono); 
+  font-size: 36px; 
+  font-weight: 700; 
+  line-height: 1;
+  color: var(--green);
+}
+
+.kpi-big-sub { 
+  font-size: 12px; 
+  margin-top: 12px;
+  color: var(--text-mid);
+  font-weight: 500;
+}
+
 .prd-badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 10px; border-radius: var(--r-sm);
-  font-size: 12px; font-weight: 600;
+  display: inline-flex; 
+  align-items: center; 
+  gap: 6px;
+  padding: 6px 12px; 
+  border-radius: var(--r-sm);
+  font-size: 12px; 
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
-.prd-pass { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
-.prd-fail { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+
+.prd-pass { 
+  background: #D1FAE5; 
+  color: var(--green); 
+  border: 1px solid var(--green);
+}
+
+.prd-fail { 
+  background: #FEE2E2; 
+  color: var(--red); 
+  border: 1px solid var(--red);
+}
 
 /* breakdown tables */
-.breakdown-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-.breakdown-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
-.breakdown-title { padding: 13px 16px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-hi); }
-.breakdown-row { display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); gap: 12px; }
-.breakdown-row:last-child { border-bottom: none; }
-.br-label { font-size: 12.5px; color: var(--text-hi); flex: 1; }
-.br-bar-wrap { flex: 2; height: 6px; background: var(--bg-raised); border-radius: 3px; overflow: hidden; }
-.br-bar { height: 100%; border-radius: 3px; background: var(--green); transition: width 0.4s ease; }
-.br-val { font-family: var(--mono); font-size: 12px; color: var(--text-mid); width: 80px; text-align: right; }
+.breakdown-grid { 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  gap: 18px; 
+  margin-bottom: 28px;
+}
+
+@media (max-width: 1024px) {
+  .breakdown-grid { grid-template-columns: 1fr; }
+}
+
+.breakdown-card { 
+  background: var(--bg-surface); 
+  border: 1px solid var(--border); 
+  border-radius: var(--r-lg); 
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.breakdown-title { 
+  padding: 16px 20px; 
+  border-bottom: 1px solid var(--border); 
+  font-size: 13px; 
+  font-weight: 700; 
+  color: var(--text-hi);
+  background: var(--bg-raised);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.breakdown-row { 
+  display: flex; 
+  align-items: center; 
+  padding: 14px 20px; 
+  border-bottom: 1px solid var(--border); 
+  gap: 14px;
+  transition: var(--transition-ease);
+}
+
+.breakdown-row:hover {
+  background: var(--bg-raised);
+}
+
+.breakdown-row:last-child { 
+  border-bottom: none;
+}
+
+.br-label { 
+  font-size: 12px; 
+  color: var(--text-hi); 
+  flex: 1;
+  font-weight: 600;
+}
+
+.br-label small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-lo);
+  margin-top: 3px;
+  font-weight: 400;
+}
+
+.br-bar-wrap { 
+  flex: 2; 
+  height: 8px; 
+  background: var(--bg-raised); 
+  border-radius: 4px; 
+  overflow: hidden;
+}
+
+.br-bar { 
+  height: 100%; 
+  border-radius: 4px; 
+  background: var(--green); 
+  transition: width 0.4s ease;
+}
+
+.br-val { 
+  font-family: var(--mono); 
+  font-size: 12px; 
+  color: var(--text-mid);
+  width: 90px; 
+  text-align: right;
+  font-weight: 700;
+}
 
 /* ── Notification toast ──────────────────────────────────────── */
 .toast {
-  position: fixed; bottom: 20px; right: 20px; z-index: 999;
-  padding: 12px 18px; border-radius: var(--r-md);
-  font-size: 13px; font-weight: 500;
-  opacity: 0; transform: translateY(8px);
-  transition: all 0.25s;
+  position: fixed; 
+  bottom: 24px; 
+  right: 24px; 
+  z-index: 999;
+  padding: 14px 20px; 
+  border-radius: var(--r-md);
+  font-size: 13px; 
+  font-weight: 600;
+  opacity: 0; 
+  transform: translateY(8px);
+  transition: var(--transition-ease);
   pointer-events: none;
-  max-width: 320px;
+  max-width: 340px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
-.toast.show { opacity: 1; transform: translateY(0); }
-.toast-success { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
-.toast-error   { background: var(--red-dim);   color: var(--red);   border: 1px solid var(--red); }
+
+.toast.show { 
+  opacity: 1; 
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.toast-success { 
+  background: #D1FAE5; 
+  color: var(--green); 
+  border: 1px solid var(--green);
+}
+
+.toast-error {
+  background: #FEE2E2;
+  color: var(--red);
+  border: 1px solid var(--red);
+}
 
 /* ── Scrollbar ───────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 3px; }
+::-webkit-scrollbar { 
+  width: 8px; 
+  height: 8px;
+}
+
+::-webkit-scrollbar-track { 
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb { 
+  background: var(--border-hi); 
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-lo);
+}
 
 /* ── Section heading ─────────────────────────────────────────── */
-.section-heading { font-size: 12px; font-weight: 600; color: var(--text-lo); letter-spacing: 0.05em; margin-bottom: 10px; text-transform: uppercase; }
+.section-heading { 
+  font-size: 12px; 
+  font-weight: 700; 
+  color: var(--text-lo); 
+  letter-spacing: 0.08em; 
+  margin-bottom: 14px; 
+  text-transform: uppercase;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .gen-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .gen-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --header-h: 56px;
+  }
+
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    width: var(--sidebar-w-expanded);
+  }
+
+  .gen-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .gen-panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    max-height: 45vh;
+  }
+
+  .gen-result {
+    overflow-y: auto;
+  }
+
+  .kpi-grid-big {
+    grid-template-columns: 1fr;
+  }
+
+  .breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
 </head>
 <body>
@@ -341,11 +1487,17 @@ tbody td { padding: 11px 14px; font-size: 12.5px; vertical-align: middle; }
 
   <!-- ── HEADER ──────────────────────────────────────────────── -->
   <header class="header">
+    <button class="header-hamburger" id="sidebarToggle" title="Toggle sidebar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+
     <div class="header-logo">
       <div class="logo-mark">
         <svg viewBox="0 0 16 16" fill="none">
-          <path d="M8 2L14 5.5V10.5L8 14L2 10.5V5.5L8 2Z" stroke="#001A12" stroke-width="1.5" fill="none"/>
-          <path d="M8 5L11 6.75V10.25L8 12L5 10.25V6.75L8 5Z" fill="#001A12"/>
+          <path d="M8 2L14 5.5V10.5L8 14L2 10.5V5.5L8 2Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <path d="M8 5L11 6.75V10.25L8 12L5 10.25V6.75L8 5Z" fill="currentColor"/>
         </svg>
       </div>
       <div>
@@ -356,30 +1508,38 @@ tbody td { padding: 11px 14px; font-size: 12.5px; vertical-align: middle; }
     <div class="header-divider"></div>
     <span class="header-title">PT Kerry Ingredients Indonesia</span>
     <div class="header-right">
+      <button class="theme-toggle" id="themeToggle" type="button" title="Ganti tema" aria-label="Ganti tema">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></svg>
+      </button>
       <div class="api-status">
         <div class="status-dot" id="apiDot"></div>
-        <span id="apiStatusText">Menghubungkan ke API...</span>
+        <span id="apiStatusText">Connecting...</span>
       </div>
       <div class="header-time" id="headerTime"></div>
     </div>
   </header>
 
   <!-- ── SIDEBAR ─────────────────────────────────────────────── -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
+    <button class="sidebar-collapse-toggle" id="sidebarCollapseToggle" type="button" title="Tutup sidebar" aria-label="Tutup sidebar" aria-expanded="true">
+      <svg id="sidebarCollapseIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"></polyline>
+      </svg>
+    </button>
     <div class="nav-section">
       <div class="nav-label">Menu</div>
       <div class="nav-item active" onclick="switchPage('generate')" id="nav-generate">
-        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/>
-          <rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/>
+          <rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/>
         </svg>
-        Generate Jadwal
+        <span class="nav-text">Generate Jadwal</span>
       </div>
       <div class="nav-item" onclick="switchPage('kpi')" id="nav-kpi">
-        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
-          <polyline points="2,12 5,8 8,10 11,5 14,7"/><line x1="2" y1="14" x2="14" y2="14"/>
+        <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+          <polyline points="2,15 5,11 8,13 14,5 18,7"/><line x1="2" y1="18" x2="18" y2="18"/>
         </svg>
-        KPI & Laporan
+        <span class="nav-text">KPI & Laporan</span>
       </div>
     </div>
 
@@ -387,10 +1547,10 @@ tbody td { padding: 11px 14px; font-size: 12.5px; vertical-align: middle; }
       <div class="nav-label">Status Mesin</div>
     </div>
     <div class="sidebar-machines" id="sidebarMachines">
-      <!-- populated by JS -->
-      <div style="font-size:12px;color:var(--text-lo);padding:0 10px">Memuat mesin...</div>
+      <div style="font-size:12px;color:var(--text-lo);padding:0 10px">Loading machines...</div>
     </div>
   </aside>
+  <div class="mobile-overlay" id="mobileOverlay"></div>
 
   <!-- ── MAIN ────────────────────────────────────────────────── -->
   <main class="main">
@@ -404,28 +1564,28 @@ tbody td { padding: 11px 14px; font-size: 12.5px; vertical-align: middle; }
           <div>
             <div class="panel-title">Target Order Bulanan</div>
 
-            <div class="field-group" style="margin-bottom:16px">
+            <div class="field-group" style="margin-bottom:18px">
               <div class="field-label">Bulan Produksi</div>
               <input type="month" class="field-input" id="inputMonth" value="2025-11"/>
             </div>
 
-            <div class="field-label" style="margin-bottom:8px">Order dari Supply Chain</div>
+            <div class="field-label" style="margin-bottom:10px">Order dari Supply Chain</div>
             <div class="order-list" id="orderList"></div>
 
-            <button class="btn btn-ghost" style="margin-top:10px" onclick="addOrderRow()">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
-                <line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/>
+            <button class="btn btn-ghost" style="margin-top:12px" onclick="addOrderRow()">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
               </svg>
-              Tambah Produk
+              <span>Tambah Produk</span>
             </button>
           </div>
 
-          <div style="border-top:1px solid var(--border);padding-top:16px">
+          <div style="border-top:1px solid var(--border);padding-top:18px">
             <button class="btn btn-primary" id="btnGenerate" onclick="generateSchedule()">
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5">
-                <polygon points="3,2 11,7 3,12"/>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <polygon points="4,2 14,8 4,14"/>
               </svg>
-              Generate Jadwal
+              <span>Generate Jadwal</span>
             </button>
           </div>
 
@@ -442,12 +1602,10 @@ tbody td { padding: 11px 14px; font-size: 12.5px; vertical-align: middle; }
         <div class="gen-result" id="genResult">
           <div class="empty-state" id="emptyState">
             <svg class="empty-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2">
-              <rect x="6" y="6" width="36" height="36" rx="4"/>
-              <line x1="14" y1="18" x2="34" y2="18"/>
-              <line x1="14" y1="24" x2="28" y2="24"/>
-              <line x1="14" y1="30" x2="22" y2="30"/>
+              <rect x="6" y="6" width="36" height="36" rx="4"/><line x1="14" y1="18" x2="34" y2="18"/>
+              <line x1="14" y1="24" x2="28" y2="24"/><line x1="14" y1="30" x2="22" y2="30"/>
             </svg>
-            <div class="empty-text">Masukkan order dan klik<br><strong style="color:var(--text-mid)">Generate Jadwal</strong><br>untuk melihat hasil optimasi</div>
+            <div class="empty-text">Masukkan order dan klik<br><strong>Generate Jadwal</strong><br>untuk melihat hasil optimasi</div>
           </div>
           <div class="loader-wrap" id="loaderState" style="display:none">
             <div class="spinner"></div>
@@ -461,6 +1619,16 @@ tbody td { padding: 11px 14px; font-size: 12.5px; vertical-align: middle; }
     <!-- PAGE: KPI -->
     <div class="page" id="page-kpi">
       <div class="kpi-page">
+        <div class="kpi-page-header">
+          <div class="kpi-page-title">KPI & Laporan Penghematan</div>
+          <button class="btn-export" id="btnExportExcel" onclick="exportToExcel()" style="display:none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download Excel
+          </button>
+        </div>
+
         <div id="kpiEmpty" class="empty-state" style="height:60vh">
           <svg class="empty-icon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.2">
             <polyline points="6,38 16,26 22,30 30,18 38,22"/><line x1="6" y1="42" x2="42" y2="42"/>
@@ -479,17 +1647,340 @@ tbody td { padding: 11px 14px; font-size: 12.5px; vertical-align: middle; }
 
 <script>
 // ── CONFIG ────────────────────────────────────────────────────────────────────
-// Pakai same-origin hanya jika dashboard disajikan oleh API di port 8000.
-// Selain itu (file://, Live Server, port lain) arahkan ke API lokal.
 const API_BASE = (
   window.location.protocol !== 'file:' &&
   (window.location.port === '8000' || /:(8000)$/.test(window.location.host))
 )
   ? ''
   : 'http://localhost:8000';
-const DEMO_MODE = false;  // true = mock lokal tanpa memanggil API
+const DEMO_MODE = false;
 
-// ── DEMO: Mock API responses ──────────────────────────────────────────────────
+// ── State ─────────────────────────────────────────────────────────────────────
+let products = [];
+let machines = [];
+let lastSchedule = null;
+let sidebarCollapsed = false;
+let currentTheme = 'light';
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  initTheme();
+  startClock();
+  setupSidebarToggle();
+  await Promise.all([loadProducts(), loadMachines()]);
+  addOrderRow();
+  checkApiHealth();
+});
+
+function setupSidebarToggle() {
+  const mobileToggle = document.getElementById('sidebarToggle');
+  const desktopToggle = document.getElementById('sidebarCollapseToggle');
+  const sidebar = document.getElementById('sidebar');
+  const shell = document.querySelector('.shell');
+  const overlay = document.getElementById('mobileOverlay');
+
+  const isMobile = () => window.innerWidth <= 768;
+
+  function setDesktopCollapsed(collapsed) {
+    sidebarCollapsed = collapsed;
+    sidebar.classList.toggle('collapsed', collapsed);
+    shell.classList.toggle('sidebar-collapsed', collapsed);
+    if (desktopToggle) {
+      desktopToggle.setAttribute('aria-expanded', String(!collapsed));
+      desktopToggle.title = collapsed ? 'Buka sidebar' : 'Tutup sidebar';
+      desktopToggle.setAttribute('aria-label', collapsed ? 'Buka sidebar' : 'Tutup sidebar');
+    }
+    const icon = document.getElementById('sidebarCollapseIcon');
+    if (icon) {
+      icon.innerHTML = collapsed
+        ? '<polyline points="9 18 15 12 9 6"></polyline>'
+        : '<polyline points="15 18 9 12 15 6"></polyline>';
+    }
+  }
+
+  function setMobileOpen(open) {
+    sidebar.classList.toggle('mobile-open', open);
+    if (overlay) overlay.classList.toggle('show', open);
+    if (mobileToggle) {
+      mobileToggle.setAttribute('aria-expanded', String(open));
+      mobileToggle.setAttribute('aria-label', open ? 'Tutup sidebar' : 'Buka sidebar');
+      mobileToggle.title = open ? 'Tutup sidebar' : 'Buka sidebar';
+    }
+  }
+
+  mobileToggle.addEventListener('click', () => {
+    if (isMobile()) {
+      setMobileOpen(!sidebar.classList.contains('mobile-open'));
+    }
+  });
+
+  desktopToggle.addEventListener('click', () => {
+    if (!isMobile()) {
+      setDesktopCollapsed(!sidebarCollapsed);
+    }
+  });
+
+  if (overlay) overlay.addEventListener('click', () => setMobileOpen(false));
+
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+      if (isMobile()) setMobileOpen(false);
+    });
+  });
+
+  window.addEventListener('resize', () => {
+    if (isMobile()) {
+      shell.classList.remove('sidebar-collapsed');
+      sidebar.classList.remove('collapsed');
+    } else {
+      setMobileOpen(false);
+      setDesktopCollapsed(sidebarCollapsed);
+    }
+  });
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('kerry-theme');
+  currentTheme = saved === 'dark' ? 'dark' : 'light';
+  applyTheme(currentTheme);
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(currentTheme);
+    localStorage.setItem('kerry-theme', currentTheme);
+  });
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const icon = document.getElementById('themeIcon');
+  const btn = document.getElementById('themeToggle');
+  if (!icon || !btn) return;
+  if (theme === 'dark') {
+    icon.innerHTML = '<circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path>';
+    btn.title = 'Ganti ke light mode';
+    btn.setAttribute('aria-label', 'Ganti ke light mode');
+  } else {
+    icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+    btn.title = 'Ganti ke dark mode';
+    btn.setAttribute('aria-label', 'Ganti ke dark mode');
+  }
+}
+
+function startClock() {
+  const el = document.getElementById('headerTime');
+  const tick = () => {
+    const now = new Date();
+    el.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
+  };
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ── API calls ─────────────────────────────────────────────────────────────────
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(API_BASE + path, opts);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail));
+  }
+  return res.json();
+}
+
+async function checkApiHealth() {
+  const dot = document.getElementById('apiDot');
+  const text = document.getElementById('apiStatusText');
+  if (DEMO_MODE) {
+    dot.classList.remove('offline');
+    text.textContent = 'Mode Demo';
+    return;
+  }
+  try {
+    await apiFetch('/api/health');
+    dot.classList.remove('offline');
+    text.textContent = 'API Connected';
+  } catch (e1) {
+    try {
+      await apiFetch('/');
+      dot.classList.remove('offline');
+      text.textContent = 'API Connected';
+    } catch (e2) {
+      dot.classList.add('offline');
+      text.textContent = 'API Offline';
+    }
+  }
+}
+
+async function loadProducts() {
+  try {
+    products = await apiFetch('/api/products');
+  } catch {
+    if (!DEMO_MODE) {
+      showToast('Gagal memuat produk', 'error');
+    }
+    products = [
+      { product_id:'P001', label:'Produk Standard', n_steps:2, energy_factor:1.00, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Packer'}] },
+      { product_id:'P002', label:'Produk High-Density', n_steps:3, energy_factor:1.30, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Extruder'},{step:3,machine_type:'Packer'}] },
+      { product_id:'P003', label:'Produk Lightweight', n_steps:2, energy_factor:0.82, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Packer'}] },
+      { product_id:'P004', label:'Produk Premium Roasted', n_steps:5, energy_factor:1.55, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Roaster'},{step:3,machine_type:'Extruder'},{step:4,machine_type:'Packer'},{step:5,machine_type:'Palletizer'}] },
+      { product_id:'P005', label:'Produk Economy', n_steps:2, energy_factor:0.90, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Packer'}] },
+      { product_id:'P006', label:'Produk Specialty', n_steps:4, energy_factor:1.20, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Extruder'},{step:3,machine_type:'Packer'},{step:4,machine_type:'Palletizer'}] },
+      { product_id:'P007', label:'Produk Full-Process', n_steps:5, energy_factor:1.45, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Roaster'},{step:3,machine_type:'Extruder'},{step:4,machine_type:'Packer'},{step:5,machine_type:'Palletizer'}] },
+    ];
+  }
+}
+
+async function loadMachines() {
+  try {
+    machines = await apiFetch('/api/machines');
+  } catch {
+    if (!DEMO_MODE) {
+      showToast('Gagal memuat mesin', 'error');
+    }
+    machines = [
+      { machine_id:'M001', label:'Mixer Utama A', type:'Mixer', base_power_kw:120, efficiency:0.92 },
+      { machine_id:'M002', label:'Roaster A', type:'Roaster', base_power_kw:180, efficiency:0.89 },
+      { machine_id:'M003', label:'Extruder A', type:'Extruder', base_power_kw:160, efficiency:0.91 },
+      { machine_id:'M004', label:'Packer A', type:'Packer', base_power_kw:75, efficiency:0.94 },
+      { machine_id:'M005', label:'Palletizer A', type:'Palletizer', base_power_kw:210, efficiency:0.87 },
+      { machine_id:'M006', label:'Mixer Cadangan B', type:'Mixer', base_power_kw:130, efficiency:0.90 },
+      { machine_id:'M007', label:'Roaster B', type:'Roaster', base_power_kw:175, efficiency:0.88 },
+      { machine_id:'M008', label:'Packer B', type:'Packer', base_power_kw:85, efficiency:0.93 },
+    ];
+  }
+  renderSidebarMachines(machines.map(m => m.machine_id));
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function renderSidebarMachines(activeMachineIds = []) {
+  const wrap = document.getElementById('sidebarMachines');
+  wrap.innerHTML = machines.map(m => {
+    const isActive = activeMachineIds.includes(m.machine_id);
+    return `
+      <div class="machine-pill">
+        <div class="machine-name">${m.machine_id}</div>
+        <div class="machine-type-tag">${m.type}</div>
+        <div class="machine-dot ${isActive ? 'm-active' : 'm-standby'}"></div>
+      </div>`;
+  }).join('');
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('mobile-open');
+    document.getElementById('mobileOverlay')?.classList.remove('show');
+  }
+
+  document.getElementById('btnExportExcel').style.display = (name === 'kpi' && lastSchedule) ? 'flex' : 'none';
+}
+
+// ── Order form ────────────────────────────────────────────────────────────────
+function addOrderRow() {
+  const list = document.getElementById('orderList');
+  const div = document.createElement('div');
+  div.className = 'order-row';
+  div.innerHTML = `
+    <select onchange="updateBomPreview()">
+      <option value="">— Pilih produk —</option>
+      ${products.map(p => `<option value="${p.product_id}">${p.product_id} — ${p.label}</option>`).join('')}
+    </select>
+    <input type="number" placeholder="Ton" min="1" max="9999" step="1" onchange="updateBomPreview()"/>
+    <button class="btn-remove" onclick="removeOrderRow(this)" title="Hapus">×</button>`;
+  list.appendChild(div);
+}
+
+function removeOrderRow(btn) {
+  const row = btn.closest('.order-row');
+  row.remove();
+  updateBomPreview();
+}
+
+function getOrders() {
+  const rows = document.querySelectorAll('#orderList .order-row');
+  const orders = [];
+  rows.forEach(row => {
+    const pid = row.querySelector('select').value;
+    const qty = parseFloat(row.querySelector('input').value);
+    if (pid && qty > 0) orders.push({ product_id: pid, quantity_mt: qty });
+  });
+  return orders;
+}
+
+function validateOrders() {
+  const rows = [...document.querySelectorAll('#orderList .order-row')];
+  if (!rows.length) return 'Tambahkan minimal 1 baris order';
+
+  let hasProductMissing = false;
+  let hasQtyMissing = false;
+  let hasQtyTooBig = false;
+  let validCount = 0;
+
+  rows.forEach(row => {
+    const sel = row.querySelector('select');
+    const inp = row.querySelector('input');
+    const pid = sel.value;
+    const qty = parseFloat(inp.value);
+    row.classList.remove('row-error');
+
+    if (!pid && !(inp.value && parseFloat(inp.value) > 0)) {
+      return;
+    }
+    if (!pid) {
+      hasProductMissing = true;
+      sel.classList.add('input-error');
+      row.classList.add('row-error');
+    } else {
+      sel.classList.remove('input-error');
+    }
+    if (!qty || qty <= 0) {
+      hasQtyMissing = true;
+      inp.classList.add('input-error');
+      row.classList.add('row-error');
+    } else if (qty > 10000) {
+      hasQtyTooBig = true;
+      inp.classList.add('input-error');
+      row.classList.add('row-error');
+    } else {
+      inp.classList.remove('input-error');
+    }
+    if (pid && qty > 0 && qty <= 10000) validCount++;
+  });
+
+  if (validCount > 0 && !hasProductMissing && !hasQtyMissing && !hasQtyTooBig) return null;
+  if (hasProductMissing) return 'Pilih produk di dropdown';
+  if (hasQtyMissing) return 'Isi kuantitas (MT) untuk setiap produk';
+  if (hasQtyTooBig) return 'Kuantitas maksimal 10.000 MT per produk';
+  if (!validCount) return 'Lengkapi order: pilih produk DAN isi tonase';
+  return null;
+}
+
+function updateBomPreview() {
+  const orders = getOrders();
+  const wrap = document.getElementById('bomPreview');
+  const content = document.getElementById('bomPreviewContent');
+  if (!orders.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  const COLOR_MAP = { Mixer:'pill-mixer', Roaster:'pill-roaster', Extruder:'pill-extruder', Packer:'pill-packer', Palletizer:'pill-palletizer' };
+
+  content.innerHTML = orders.map(o => {
+    const p = products.find(x => x.product_id === o.product_id);
+    if (!p) return '';
+    const steps = p.route.map(s => `<span class="td-pill ${COLOR_MAP[s.machine_type] || ''}">${s.machine_type}</span>`).join('<span style="color:var(--text-lo);margin:0 3px;font-size:11px">→</span>');
+    return `
+      <div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <div style="font-size:12px;font-weight:600;color:var(--text-hi);margin-bottom:6px">${p.product_id} · ${o.quantity_mt} MT · ${p.n_steps} step</div>
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:3px">${steps}</div>
+      </div>`;
+  }).join('');
+}
+
+// ── Mock data generator ──────────────────────────────────────────────────────
 function mockSchedule(orders, month) {
   const machines_master = {
     M001:{type:'Mixer',base_power_kw:120,label:'Mixer Utama A'},
@@ -512,7 +2003,7 @@ function mockSchedule(orders, month) {
   };
   const prod_labels = {P001:'Produk Standard',P002:'Produk High-Density',P003:'Produk Lightweight',P004:'Produk Premium Roasted',P005:'Produk Economy',P006:'Produk Specialty Extruded',P007:'Produk Full-Process'};
   const power_kw_by_type = {Mixer:120,Roaster:180,Extruder:160,Packer:75,Palletizer:210};
-  const shift_mult  = {'Shift 1':1.00,'Shift 2':1.05,'Shift 3':0.97};
+  const shift_mult = {'Shift 1':1.00,'Shift 2':1.05,'Shift 3':0.97};
   const best_shifts_by_type = {Mixer:'Shift 3',Roaster:'Shift 3',Extruder:'Shift 3',Packer:'Shift 1',Palletizer:'Shift 1'};
   const machine_by_type = {};
   Object.entries(machines_master).forEach(([mid,m])=>{ (machine_by_type[m.type]||(machine_by_type[m.type]=[])).push(mid); });
@@ -520,7 +2011,6 @@ function mockSchedule(orders, month) {
   const [yr,mo] = month.split('-').map(Number);
   const schedule = [];
   const used_machines = new Set();
-  // Timeline per mesin (tanggal bebas berikutnya) + beban jam untuk load-balance
   const machine_free_day = {};
   const machine_load_hrs = {};
   Object.keys(machines_master).forEach(mid => {
@@ -548,7 +2038,6 @@ function mockSchedule(orders, month) {
     return [start, end];
   }
 
-  // Step dulu, job besar dulu — selaras backend optimizer
   const jobs = [];
   orders.forEach(order => {
     const route = bom_routes[order.product_id]||[];
@@ -565,13 +2054,11 @@ function mockSchedule(orders, month) {
     const shift = best_shifts_by_type[mtype]||'Shift 1';
     const pkw = power_kw_by_type[mtype]||120;
 
-    // Pilih mesin: kWh + penalti beban (manfaatkan paralel)
     let bestMid = candidates[0];
     let bestScore = Infinity;
     let bestKwh = Infinity;
     candidates.forEach(mid => {
-      const kwh = Math.round(pkw * op_hours * shift_mult[shift] * 0.88 * (1 + step.step*0.03)
-        * (machines_master[mid].base_power_kw / pkw));
+      const kwh = Math.round(pkw * op_hours * shift_mult[shift] * 0.88 * (1 + step.step*0.03) * (machines_master[mid].base_power_kw / pkw));
       const score = kwh + LOAD_PENALTY * machine_load_hrs[mid];
       if (score < bestScore || (score === bestScore && kwh < bestKwh)) {
         bestScore = score;
@@ -584,11 +2071,7 @@ function mockSchedule(orders, month) {
     machine_load_hrs[bestMid] += op_hours;
 
     const poRef = `${order.product_id}-${order.quantity_mt}MT`;
-    const earliest = Math.max(
-      machine_free_day[bestMid],
-      po_ready_day[poRef] || 1,
-      1
-    );
+    const earliest = Math.max(machine_free_day[bestMid], po_ready_day[poRef] || 1, 1);
     const days_span = Math.max(1, Math.ceil(op_hours / 16));
     const [startN, endN] = addWorkSpan(earliest, days_span);
     const sd = new Date(yr, mo-1, startN);
@@ -598,27 +2081,25 @@ function mockSchedule(orders, month) {
     po_ready_day[poRef] = nextWorkDayNum(endN + 1);
 
     const mdata = machines_master[bestMid];
-    const wip = step.step>1
-      ? `Material ${prod_labels[order.product_id]} (WIP dari step ${step.step-1}) sudah menunggu di gudang.`
-      : null;
+    const wip = step.step>1 ? `Material ${prod_labels[order.product_id]} (WIP dari step ${step.step-1}) sudah menunggu di gudang.` : null;
 
     schedule.push({
-      session_id    :`${poRef}-step${step.step}`,
-      po_ref        : poRef,
-      product_id    : order.product_id,
-      product_label : prod_labels[order.product_id]||order.product_id,
-      route_step    : step.step,
-      machine_id    : bestMid,
-      machine_label : mdata.label,
-      machine_type  : mtype,
-      process_desc  : step.hpm*order.quantity_mt>4?'Proses intensif':'Proses standar',
-      quantity_mt   : order.quantity_mt,
+      session_id: `${poRef}-step${step.step}`,
+      po_ref: poRef,
+      product_id: order.product_id,
+      product_label: prod_labels[order.product_id]||order.product_id,
+      route_step: step.step,
+      machine_id: bestMid,
+      machine_label: mdata.label,
+      machine_type: mtype,
+      process_desc: step.hpm*order.quantity_mt>4?'Proses intensif':'Proses standar',
+      quantity_mt: order.quantity_mt,
       shift, op_hours, operating_hours: op_hours,
       start_date: sd.toISOString().slice(0,10),
-      end_date  : ed.toISOString().slice(0,10),
-      predicted_kwh : bestKwh,
-      kwh_per_mt    : Math.round(bestKwh/order.quantity_mt*100)/100,
-      instruction   : `Jalankan ${bestMid} (${mtype}) untuk ${prod_labels[order.product_id]} sebanyak ${order.quantity_mt} MT mulai ${sd.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'short'})}${startN!==endN?' sampai '+ed.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'short'}):''}. ${mtype==='Roaster'||mtype==='Extruder'?'Jangan matikan mesin di tengah proses.':''}`,
+      end_date: ed.toISOString().slice(0,10),
+      predicted_kwh: bestKwh,
+      kwh_per_mt: Math.round(bestKwh/order.quantity_mt*100)/100,
+      instruction: `Jalankan ${bestMid} (${mtype}) untuk ${prod_labels[order.product_id]} sebanyak ${order.quantity_mt} MT mulai ${sd.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'short'})}${startN!==endN?' sampai '+ed.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'short'}):''}. ${mtype==='Roaster'||mtype==='Extruder'?'Jangan matikan mesin di tengah proses.':''}`,
       wip_note: wip,
       status:'scheduled',
     });
@@ -627,7 +2108,7 @@ function mockSchedule(orders, month) {
   schedule.sort((a,b) => a.start_date.localeCompare(b.start_date) || a.machine_id.localeCompare(b.machine_id));
 
   const total_kwh = schedule.reduce((s,r)=>s+r.predicted_kwh,0);
-  const total_mt  = orders.reduce((s,o)=>s+o.quantity_mt,0);
+  const total_mt = orders.reduce((s,o)=>s+o.quantity_mt,0);
   const all_dates = new Set();
   schedule.forEach(r=>{
     let d=new Date(r.start_date), e=new Date(r.end_date);
@@ -673,260 +2154,29 @@ function mockSchedule(orders, month) {
   };
 }
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let products = [];
-let machines = [];
-let lastSchedule = null;
-
-// ── Init ──────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  startClock();
-  await Promise.all([loadProducts(), loadMachines()]);
-  addOrderRow();   // satu baris kosong by default
-  checkApiHealth();
-});
-
-function startClock() {
-  const el = document.getElementById('headerTime');
-  const tick = () => {
-    const now = new Date();
-    el.textContent = now.toLocaleTimeString('id-ID', { hour12: false });
-  };
-  tick(); setInterval(tick, 1000);
-}
-
-// ── API calls ─────────────────────────────────────────────────────────────────
-async function apiFetch(path, opts = {}) {
-  const res = await fetch(API_BASE + path, opts);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(typeof err.detail === 'string' ? err.detail : JSON.stringify(err.detail));
-  }
-  return res.json();
-}
-
-async function checkApiHealth() {
-  const dot  = document.getElementById('apiDot');
-  const text = document.getElementById('apiStatusText');
-  if (DEMO_MODE) {
-    dot.classList.remove('offline');
-    text.textContent = 'Mode Demo — tanpa API';
-    return;
-  }
-  try {
-    await apiFetch('/api/health');
-    dot.classList.remove('offline');
-    text.textContent = 'API tersambung (' + (API_BASE || window.location.origin) + ')';
-  } catch (e1) {
-    try {
-      await apiFetch('/');
-      dot.classList.remove('offline');
-      text.textContent = 'API tersambung (' + (API_BASE || window.location.origin) + ')';
-    } catch (e2) {
-      dot.classList.add('offline');
-      text.textContent = 'API offline — jalankan uvicorn :8000';
-      console.error('API health failed', API_BASE, e2);
-    }
-  }
-}
-
-async function loadProducts() {
-  try {
-    products = await apiFetch('/api/products');
-  } catch {
-    if (!DEMO_MODE) {
-      showToast('Gagal memuat produk dari API — memakai data fallback', 'error');
-    }
-    // fallback dummy products so UI still works
-    products = [
-      { product_id:'P001', label:'Produk Standard',        n_steps:2, energy_factor:1.00, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Packer'}] },
-      { product_id:'P002', label:'Produk High-Density',    n_steps:3, energy_factor:1.30, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Extruder'},{step:3,machine_type:'Packer'}] },
-      { product_id:'P003', label:'Produk Lightweight',     n_steps:2, energy_factor:0.82, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Packer'}] },
-      { product_id:'P004', label:'Produk Premium Roasted', n_steps:5, energy_factor:1.55, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Roaster'},{step:3,machine_type:'Extruder'},{step:4,machine_type:'Packer'},{step:5,machine_type:'Palletizer'}] },
-      { product_id:'P005', label:'Produk Economy',         n_steps:2, energy_factor:0.90, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Packer'}] },
-      { product_id:'P006', label:'Produk Specialty',       n_steps:4, energy_factor:1.20, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Extruder'},{step:3,machine_type:'Packer'},{step:4,machine_type:'Palletizer'}] },
-      { product_id:'P007', label:'Produk Full-Process',    n_steps:5, energy_factor:1.45, route:[{step:1,machine_type:'Mixer'},{step:2,machine_type:'Roaster'},{step:3,machine_type:'Extruder'},{step:4,machine_type:'Packer'},{step:5,machine_type:'Palletizer'}] },
-    ];
-  }
-}
-
-async function loadMachines() {
-  try {
-    machines = await apiFetch('/api/machines');
-  } catch {
-    if (!DEMO_MODE) {
-      showToast('Gagal memuat mesin dari API — memakai data fallback', 'error');
-    }
-    machines = [
-      { machine_id:'M001', label:'Mixer Utama A',     type:'Mixer',       base_power_kw:120, efficiency:0.92 },
-      { machine_id:'M002', label:'Roaster A',          type:'Roaster',     base_power_kw:180, efficiency:0.89 },
-      { machine_id:'M003', label:'Extruder A',         type:'Extruder',    base_power_kw:160, efficiency:0.91 },
-      { machine_id:'M004', label:'Packer A',           type:'Packer',      base_power_kw:75,  efficiency:0.94 },
-      { machine_id:'M005', label:'Palletizer A',       type:'Palletizer',  base_power_kw:210, efficiency:0.87 },
-      { machine_id:'M006', label:'Mixer Cadangan B',   type:'Mixer',       base_power_kw:130, efficiency:0.90 },
-      { machine_id:'M007', label:'Roaster B',          type:'Roaster',     base_power_kw:175, efficiency:0.88 },
-      { machine_id:'M008', label:'Packer B',           type:'Packer',      base_power_kw:85,  efficiency:0.93 },
-    ];
-  }
-  renderSidebarMachines(machines.map(m => m.machine_id));
-}
-
-// ── Sidebar ───────────────────────────────────────────────────────────────────
-function renderSidebarMachines(activeMachineIds = []) {
-  const wrap = document.getElementById('sidebarMachines');
-  wrap.innerHTML = machines.map(m => {
-    const isActive = activeMachineIds.includes(m.machine_id);
-    return `
-      <div class="machine-pill">
-        <div>
-          <div class="machine-name">${m.machine_id}</div>
-          <div class="machine-type-tag">${m.type} · ${m.base_power_kw}kW</div>
-        </div>
-        <div class="machine-dot ${isActive ? 'm-active' : 'm-standby'}"></div>
-      </div>`;
-  }).join('');
-}
-
-// ── Navigation ────────────────────────────────────────────────────────────────
-function switchPage(name) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + name).classList.add('active');
-  document.getElementById('nav-' + name).classList.add('active');
-}
-
-// ── Order form ────────────────────────────────────────────────────────────────
-function addOrderRow() {
-  const list = document.getElementById('orderList');
-  const idx  = list.children.length;
-  const div  = document.createElement('div');
-  div.className = 'order-row';
-  div.innerHTML = `
-    <select onchange="updateBomPreview()">
-      <option value="">— Pilih produk —</option>
-      ${products.map(p =>
-        `<option value="${p.product_id}">${p.product_id} — ${p.label}</option>`
-      ).join('')}
-    </select>
-    <input type="number" placeholder="Ton" min="1" max="9999" step="1" onchange="updateBomPreview()"/>
-    <button class="btn-remove" onclick="removeOrderRow(this)" title="Hapus">×</button>`;
-  list.appendChild(div);
-}
-
-function removeOrderRow(btn) {
-  const row = btn.closest('.order-row');
-  row.remove();
-  updateBomPreview();
-}
-
-function getOrders() {
-  const rows = document.querySelectorAll('#orderList .order-row');
-  const orders = [];
-  rows.forEach(row => {
-    const pid = row.querySelector('select').value;
-    const qty = parseFloat(row.querySelector('input').value);
-    if (pid && qty > 0) orders.push({ product_id: pid, quantity_mt: qty });
-  });
-  return orders;
-}
-
-/** Validasi form order — kembalikan pesan error atau null jika OK */
-function validateOrders() {
-  const rows = [...document.querySelectorAll('#orderList .order-row')];
-  if (!rows.length) return 'Tambahkan minimal 1 baris order';
-
-  let hasProductMissing = false;
-  let hasQtyMissing = false;
-  let hasQtyTooBig = false;
-  let validCount = 0;
-
-  rows.forEach(row => {
-    const sel = row.querySelector('select');
-    const inp = row.querySelector('input');
-    const pid = sel.value;
-    const qty = parseFloat(inp.value);
-    row.classList.remove('row-error');
-
-    if (!pid && !(inp.value && parseFloat(inp.value) > 0)) {
-      // baris kosong total — abaikan
-      return;
-    }
-    if (!pid) {
-      hasProductMissing = true;
-      sel.classList.add('input-error');
-      row.classList.add('row-error');
-    } else {
-      sel.classList.remove('input-error');
-    }
-    if (!qty || qty <= 0) {
-      hasQtyMissing = true;
-      inp.classList.add('input-error');
-      row.classList.add('row-error');
-    } else if (qty > 10000) {
-      hasQtyTooBig = true;
-      inp.classList.add('input-error');
-      row.classList.add('row-error');
-    } else {
-      inp.classList.remove('input-error');
-    }
-    if (pid && qty > 0 && qty <= 10000) validCount++;
-  });
-
-  if (validCount > 0 && !hasProductMissing && !hasQtyMissing && !hasQtyTooBig) return null;
-  if (hasProductMissing) return 'Pilih produk di dropdown (masih "— Pilih produk —")';
-  if (hasQtyMissing) return 'Isi kuantitas (MT) untuk setiap produk yang dipilih';
-  if (hasQtyTooBig) return 'Kuantitas maksimal 10.000 MT per produk';
-  if (!validCount) return 'Lengkapi order: pilih produk DAN isi tonase';
-  return null;
-}
-
-function updateBomPreview() {
-  const orders = getOrders();
-  const wrap   = document.getElementById('bomPreview');
-  const content= document.getElementById('bomPreviewContent');
-  if (!orders.length) { wrap.style.display = 'none'; return; }
-  wrap.style.display = 'block';
-
-  const COLOR_MAP = { Mixer:'pill-mixer', Roaster:'pill-roaster', Extruder:'pill-extruder', Packer:'pill-packer', Palletizer:'pill-palletizer' };
-
-  content.innerHTML = orders.map(o => {
-    const p = products.find(x => x.product_id === o.product_id);
-    if (!p) return '';
-    const steps = p.route.map(s =>
-      `<span class="td-pill ${COLOR_MAP[s.machine_type] || ''}" style="font-size:10px">${s.machine_type}</span>`
-    ).join('<span style="color:var(--text-lo);margin:0 2px;font-size:10px">→</span>');
-    return `
-      <div style="background:var(--bg-raised);border-radius:6px;padding:8px 10px;margin-bottom:6px">
-        <div style="font-size:11px;font-weight:600;color:var(--text-hi);margin-bottom:5px">${p.product_id} · ${o.quantity_mt} MT · ${p.n_steps} step</div>
-        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:3px">${steps}</div>
-      </div>`;
-  }).join('');
-}
-
 // ── Generate ──────────────────────────────────────────────────────────────────
 async function generateSchedule() {
   const errMsg = validateOrders();
-  const month  = document.getElementById('inputMonth').value;
+  const month = document.getElementById('inputMonth').value;
   const orders = getOrders();
 
   if (errMsg) { showToast(errMsg, 'error'); return; }
-  if (!month)  { showToast('Pilih bulan produksi', 'error'); return; }
+  if (!month) { showToast('Pilih bulan produksi', 'error'); return; }
 
-  document.getElementById('emptyState').style.display   = 'none';
-  document.getElementById('loaderState').style.display  = 'flex';
-  document.getElementById('resultContent').style.display= 'none';
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('loaderState').style.display = 'flex';
+  document.getElementById('resultContent').style.display = 'none';
   document.getElementById('btnGenerate').disabled = true;
 
   try {
-    // Simulasi delay AI processing
     await new Promise(r => setTimeout(r, DEMO_MODE ? 1400 : 0));
 
     const data = DEMO_MODE
       ? mockSchedule(orders, month)
       : await apiFetch('/api/predict-schedule', {
-          method : 'POST',
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body   : JSON.stringify({ month, orders }),
+          body: JSON.stringify({ month, orders }),
         });
 
     lastSchedule = data;
@@ -939,7 +2189,7 @@ async function generateSchedule() {
     document.getElementById('emptyState').style.display = 'flex';
     showToast('Error: ' + err.message, 'error');
   } finally {
-    document.getElementById('loaderState').style.display  = 'none';
+    document.getElementById('loaderState').style.display = 'none';
     document.getElementById('btnGenerate').disabled = false;
   }
 }
@@ -956,11 +2206,9 @@ function renderResults(data) {
   const COLOR_MAP = { Mixer:'pill-mixer', Roaster:'pill-roaster', Extruder:'pill-extruder', Packer:'pill-packer', Palletizer:'pill-palletizer' };
   const SHIFT_MAP = { 'Shift 1':'pill-shift1', 'Shift 2':'pill-shift2', 'Shift 3':'pill-shift3' };
 
-  // Format month label
   const [yr, mo] = month.split('-');
   const monthLabel = new Date(yr, mo - 1).toLocaleDateString('id-ID', { month:'long', year:'numeric' });
 
-  // ── KPI bar ────────────────────────────────────────────────────────────────
   const tgt = kpi.prd_kwh_per_mt_target || 140;
   const kpiBar = `
     <div class="kpi-bar">
@@ -970,54 +2218,47 @@ function renderResults(data) {
         <div class="kpi-sub kpi-neutral">${month}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Penghematan vs Manual</div>
+        <div class="kpi-label">Penghematan</div>
         <div class="kpi-value kpi-good">${kpi.saving_pct}%</div>
         <div class="kpi-sub kpi-good">−${fmt(kpi.saving_kwh)} kWh · Rp ${fmtRp(kpi.saving_rp || 0)}</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Hari Operasional</div>
         <div class="kpi-value ${kpi.prd_days_target_met ? 'kpi-good' : 'kpi-warn'}">${kpi.operating_days}</div>
-        <div class="kpi-sub ${kpi.prd_days_target_met ? 'kpi-good' : 'kpi-warn'}">
-          Hemat ${kpi.days_saved} hari (${kpi.days_reduction_pct || 0}% vs 22 hari)
-        </div>
+        <div class="kpi-sub ${kpi.prd_days_target_met ? 'kpi-good' : 'kpi-warn'}">Hemat ${kpi.days_saved} hari (${kpi.days_reduction_pct || 0}%)</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">kWh / MT</div>
         <div class="kpi-value ${kpi.prd_cost_target_met ? 'kpi-good' : 'kpi-warn'}">${kpi.kwh_per_mt.toFixed(1)}</div>
-        <div class="kpi-sub ${kpi.prd_cost_target_met ? 'kpi-good' : 'kpi-warn'}">
-          ${kpi.prd_cost_target_met ? '✓' : '⚠'} Target &lt; ${tgt} kWh/MT
-        </div>
+        <div class="kpi-sub ${kpi.prd_cost_target_met ? 'kpi-good' : 'kpi-warn'}">Target &lt; ${tgt}</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Total MT</div>
         <div class="kpi-value">${kpi.total_mt.toLocaleString()}</div>
-        <div class="kpi-sub kpi-neutral">${data.total_sessions} sesi mesin</div>
+        <div class="kpi-sub kpi-neutral">${data.total_sessions} sesi</div>
       </div>
     </div>`;
 
-  // ── Gantt chart ────────────────────────────────────────────────────────────
   const gantt = buildGantt(schedule, month);
 
-  // ── Schedule table ─────────────────────────────────────────────────────────
   const tableRows = schedule.map(row => `
     <tr>
       <td class="td-mono">${row.machine_id}</td>
       <td><span class="td-pill ${COLOR_MAP[row.machine_type] || ''}">${row.machine_type}</span></td>
-      <td style="color:var(--text-mid)">${row.product_id}</td>
-      <td style="font-size:11.5px;color:var(--text-mid)">${row.product_label}</td>
-      <td style="color:var(--text-lo);text-align:center">${row.route_step}</td>
+      <td style="color:var(--text-mid);font-weight:500">${row.product_id}</td>
+      <td style="color:var(--text-mid);font-size:12px">${row.product_label}</td>
+      <td style="text-align:center;color:var(--text-lo)">${row.route_step}</td>
       <td class="td-mono">${row.quantity_mt} MT</td>
       <td><span class="td-pill ${SHIFT_MAP[row.shift] || ''}">${row.shift}</span></td>
-      <td class="td-mono" style="color:var(--text-mid)">${fmtDate(row.start_date)}</td>
-      <td class="td-mono" style="color:var(--text-mid)">${fmtDate(row.end_date)}</td>
+      <td class="td-mono">${fmtDate(row.start_date)}</td>
+      <td class="td-mono">${fmtDate(row.end_date)}</td>
       <td class="td-mono kpi-good">${fmt(row.predicted_kwh)}</td>
       <td>
         <div class="instruction-text">${row.instruction}</div>
-        ${row.wip_note ? `<div class="wip-badge">⏳ ${row.wip_note}</div>` : ''}
+        ${row.wip_note ? `<div class="wip-badge">⚠ ${row.wip_note}</div>` : ''}
       </td>
     </tr>`).join('');
 
-  // ── Standby machines ───────────────────────────────────────────────────────
   const machMap = Object.fromEntries(machines.map(m => [m.machine_id, m]));
   const standbyList = (machines_standby || []).map(s =>
     typeof s === 'string' ? { machine_id: s, machine_type: (machMap[s]||{}).type, reason: 'Standby' } : s
@@ -1030,39 +2271,22 @@ function renderResults(data) {
            const m = machMap[mid] || {};
            return `<div class="standby-chip" title="${s.reason || ''}">
              <div class="machine-dot"></div>
-             <span style="font-family:var(--mono);font-weight:500">${mid}</span>
+             <span style="font-family:var(--mono);font-weight:600">${mid}</span>
              <span style="color:var(--text-lo)">${s.machine_type || m.type || '–'}</span>
            </div>`;
          }).join('')}
        </div>
        <div style="margin-bottom:20px">
-         ${standbyList.map(s => `
-           <div style="font-size:11px;color:var(--text-lo);margin-bottom:4px">
-             <span style="font-family:var(--mono);color:var(--text-mid)">${s.machine_id}</span> — ${s.reason || 'Standby'}
-           </div>`).join('')}
+         ${standbyList.map(s => `<div style="font-size:11px;color:var(--text-lo);margin-bottom:4px"><span style="font-family:var(--mono);color:var(--text-mid);font-weight:600">${s.machine_id}</span> — ${s.reason || 'Standby'}</div>`).join('')}
        </div>` : '';
 
-  const orderIdHtml = data.order_id
-    ? `<span style="font-family:var(--mono);color:var(--green);margin-left:8px">#${data.order_id}</span>`
-    : '';
+  const orderIdHtml = data.order_id ? `<span style="font-family:var(--mono);color:var(--green);margin-left:10px;font-weight:700">#${data.order_id}</span>` : '';
   const approval = data.approval_status || 'pending';
-  const approvalHtml = `
-    <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
-      <span style="font-size:12px;color:var(--text-lo)">Status Planner:</span>
-      <span class="prd-badge ${approval === 'approved' ? 'prd-pass' : 'prd-fail'}">
-        ${approval === 'approved' ? '✓ Disetujui' : '⏳ Menunggu persetujuan'}
-      </span>
-      ${approval !== 'approved' && data.order_id && !DEMO_MODE ? `
-        <button class="btn-primary" style="padding:6px 12px;font-size:12px" onclick="approveSchedule('${data.order_id}')">
-          Setujui Jadwal
-        </button>` : ''}
-    </div>`;
 
   document.getElementById('resultContent').innerHTML = `
-    <div style="margin-bottom:16px">
-      <div style="font-size:15px;font-weight:600;color:var(--text-hi);margin-bottom:2px">Hasil Optimasi — ${monthLabel}${orderIdHtml}</div>
+    <div style="margin-bottom:20px">
+      <div style="font-size:16px;font-weight:700;color:var(--text-hi);margin-bottom:4px">Hasil Optimasi — ${monthLabel}${orderIdHtml}</div>
       <div style="font-size:12px;color:var(--text-lo)">Dibuat: ${new Date(data.generated_at).toLocaleString('id-ID')}</div>
-      ${approvalHtml}
     </div>
     ${kpiBar}
     ${gantt}
@@ -1076,7 +2300,7 @@ function renderResults(data) {
           <thead><tr>
             <th>Mesin</th><th>Tipe</th><th>Produk</th><th>Label</th>
             <th style="text-align:center">Step</th><th>Qty</th><th>Shift</th>
-            <th>Mulai</th><th>Selesai</th><th>kWh</th><th>Instruksi Operator</th>
+            <th>Mulai</th><th>Selesai</th><th>kWh</th><th>Instruksi</th>
           </tr></thead>
           <tbody>${tableRows}</tbody>
         </table>
@@ -1091,7 +2315,6 @@ function renderResults(data) {
 function buildGantt(schedule, month) {
   const [yr, mo] = month.split('-').map(Number);
 
-  // Rentang tanggal = seluruh sesi (boleh melampaui bulan jika kapasitas overflow)
   const parseYMD0 = (s) => {
     const [y, m, d] = s.split('-').map(Number);
     return new Date(y, m - 1, d);
@@ -1122,46 +2345,42 @@ function buildGantt(schedule, month) {
 
   schedule.forEach(row => {
     const start = parseYMD(row.start_date);
-    const end   = parseYMD(row.end_date);
+    const end = parseYMD(row.end_date);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       if (!machDays[row.machine_id]) machDays[row.machine_id] = {};
       const key = iso(d);
       const prev = machDays[row.machine_id][key];
-      machDays[row.machine_id][key] = prev && prev !== row.product_id
-        ? prev + '+' + row.product_id
-        : row.product_id;
+      machDays[row.machine_id][key] = prev && prev !== row.product_id ? prev + '+' + row.product_id : row.product_id;
     }
   });
 
   const rows = machines.map(m => {
     const bars = DAYS.map(dt => {
-      const key    = iso(dt);
-      const pid    = machDays[m.machine_id]?.[key];
+      const key = iso(dt);
+      const pid = machDays[m.machine_id]?.[key];
       const dayNum = dt.getDay();
       const isWknd = dayNum === 0 || dayNum === 6;
-      const isSun  = dayNum === 0;
-      const label  = dt.getDate();
+      const isSun = dayNum === 0;
+      const label = dt.getDate();
       const outMonth = (dt.getMonth() + 1) !== mo;
-      const labelStyle = outMonth ? 'color:var(--amber);font-weight:600' : '';
+      const labelStyle = outMonth ? 'color:var(--amber);font-weight:700' : '';
 
       if (pid && !isWknd) {
         const mainPid = String(pid).split('+')[0];
         return `<div class="day-col">
-          <div class="gantt-day-label" style="${labelStyle}" title="${key}">${label}</div>
-          <div class="day-bar bar-${mainPid}" title="${pid} @ ${key}">${mainPid}</div>
+          <div class="gantt-day-label" style="${labelStyle}">${label}</div>
+          <div class="day-bar bar-${mainPid}">${mainPid}</div>
         </div>`;
       } else if (isWknd) {
-        const wkndStyle = isSun
-          ? 'background:repeating-linear-gradient(45deg,var(--red-dim),var(--red-dim) 2px,transparent 2px,transparent 6px);opacity:0.6'
-          : 'background:repeating-linear-gradient(45deg,var(--border),var(--border) 2px,transparent 2px,transparent 6px);opacity:0.5';
-        const dayColor  = isSun ? 'color:var(--red)' : 'color:var(--border-hi)';
+        const wkndStyle = isSun ? 'opacity:0.4' : 'opacity:0.3';
+        const dayColor = isSun ? 'color:var(--red)' : 'color:var(--border-hi)';
         return `<div class="day-col">
-          <div class="gantt-day-label" style="${dayColor}" title="${isSun ? 'Min' : 'Sab'}">${label}</div>
-          <div class="day-bar bar-empty" style="${wkndStyle}" title="Pabrik tutup"></div>
+          <div class="gantt-day-label" style="${dayColor}">${label}</div>
+          <div class="day-bar bar-empty" style="${wkndStyle}"></div>
         </div>`;
       } else {
         return `<div class="day-col">
-          <div class="gantt-day-label" style="${labelStyle}" title="${key}">${label}</div>
+          <div class="gantt-day-label" style="${labelStyle}">${label}</div>
           <div class="day-bar bar-empty"></div>
         </div>`;
       }
@@ -1188,11 +2407,11 @@ function buildGantt(schedule, month) {
   }).join('');
 
   const spillNote = maxD.getMonth() + 1 !== mo
-    ? `<div style="font-size:11px;color:var(--amber);margin:0 18px 10px">Catatan: volume order melebihi kapasitas bulan — jadwal berlanjut ke bulan berikutnya (label tanggal oranye).</div>`
+    ? `<div style="font-size:11px;color:var(--amber);margin:0 20px 10px;font-weight:600">Note: Volume order melebihi kapasitas bulan — jadwal berlanjut ke bulan berikutnya (label oranye).</div>`
     : '';
 
   return `
-    <div class="gantt-wrap" style="margin-bottom:24px">
+    <div class="gantt-wrap">
       <div class="gantt-header">
         <div class="gantt-title">Gantt Chart — Jadwal Mesin</div>
         <div class="gantt-legend">${legendHtml}</div>
@@ -1205,15 +2424,14 @@ function buildGantt(schedule, month) {
 }
 
 function pidColor(pid) {
-  const COLORS = { P001:'#00C896', P002:'#3B82F6', P003:'#8B5CF6', P004:'#F59E0B', P005:'#EF4444', P006:'#06B6D4', P007:'#EC4899' };
-  return COLORS[pid] || '#8BA4BE';
+  const COLORS = { P001:'#059669', P002:'#2563EB', P003:'#7C3AED', P004:'#D97706', P005:'#DC2626', P006:'#0891B2', P007:'#DB2777' };
+  return COLORS[pid] || '#64748B';
 }
 
 // ── KPI Page ──────────────────────────────────────────────────────────────────
 function renderKpiPage(data) {
   const { kpi, schedule } = data;
 
-  // Breakdown per machine
   const machAgg = {};
   schedule.forEach(row => {
     if (!machAgg[row.machine_id]) machAgg[row.machine_id] = { label: row.machine_label, kwh: 0, hrs: 0, n: 0 };
@@ -1224,7 +2442,6 @@ function renderKpiPage(data) {
   const machArr = Object.entries(machAgg).sort((a,b) => b[1].kwh - a[1].kwh);
   const maxMachKwh = machArr[0]?.[1].kwh || 1;
 
-  // Breakdown per product
   const prodAgg = {};
   schedule.forEach(row => {
     if (!prodAgg[row.product_id]) prodAgg[row.product_id] = { label: row.product_label, kwh: 0, mt: row.quantity_mt };
@@ -1235,44 +2452,42 @@ function renderKpiPage(data) {
 
   const machRows = machArr.map(([mid, v]) => `
     <div class="breakdown-row">
-      <div class="br-label"><span style="font-family:var(--mono);font-weight:500">${mid}</span><br>
-        <span style="font-size:11px;color:var(--text-lo)">${v.label} · ${v.n} sesi</span></div>
+      <div class="br-label"><span style="font-family:var(--mono);font-weight:600">${mid}</span><small>${v.label} · ${v.n} sesi</small></div>
       <div class="br-bar-wrap"><div class="br-bar" style="width:${(v.kwh/maxMachKwh*100).toFixed(1)}%"></div></div>
       <div class="br-val">${fmt(v.kwh)} kWh</div>
     </div>`).join('');
 
   const prodRows = prodArr.map(([pid, v]) => `
     <div class="breakdown-row">
-      <div class="br-label"><span style="font-family:var(--mono);font-weight:500">${pid}</span><br>
-        <span style="font-size:11px;color:var(--text-lo)">${v.label}</span></div>
+      <div class="br-label"><span style="font-family:var(--mono);font-weight:600">${pid}</span><small>${v.label}</small></div>
       <div class="br-bar-wrap"><div class="br-bar" style="width:${(v.kwh/maxProdKwh*100).toFixed(1)}%;background:${pidColor(pid)}"></div></div>
       <div class="br-val">${fmt(v.kwh)} kWh</div>
     </div>`).join('');
 
   document.getElementById('kpiContent').innerHTML = `
-    <div style="font-size:15px;font-weight:600;color:var(--text-hi);margin-bottom:20px">KPI & Laporan Penghematan</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text-hi);margin-bottom:20px;text-transform:uppercase;letter-spacing:0.05em">Overview Penghematan</div>
 
     <div class="kpi-grid-big">
       <div class="kpi-big-card">
         <div class="kpi-big-label">Total Konsumsi Listrik</div>
-        <div class="kpi-big-value" style="color:var(--green)">${fmt(kpi.total_kwh)}</div>
+        <div class="kpi-big-value">${fmt(kpi.total_kwh)}</div>
         <div class="kpi-big-sub kpi-neutral">kWh bulan ini</div>
       </div>
       <div class="kpi-big-card">
-        <div class="kpi-big-label">Penghematan vs Jadwal Manual</div>
+        <div class="kpi-big-label">Penghematan vs Manual</div>
         <div class="kpi-big-value" style="color:var(--green)">${kpi.saving_pct}%</div>
-        <div class="kpi-big-sub kpi-good">−${fmt(kpi.saving_kwh)} kWh · Rp ${fmtRp(kpi.saving_rp || 0)}</div>
+        <div class="kpi-big-sub kpi-good">−${fmt(kpi.saving_kwh)} kWh</div>
       </div>
       <div class="kpi-big-card">
-        <div class="kpi-big-label">Status Acceptance Criteria PRD</div>
-        <div class="kpi-big-value" style="font-size:20px;margin-top:8px">
+        <div class="kpi-big-label">Status Acceptance Criteria</div>
+        <div style="margin-top:12px">
           <span class="prd-badge ${kpi.prd_kpi_target_met ? 'prd-pass' : 'prd-fail'}">
             ${kpi.prd_kpi_target_met ? '✓ PASS' : '✗ FAIL'}
           </span>
         </div>
-        <div class="kpi-big-sub" style="color:var(--text-lo);margin-top:12px;line-height:1.6">
-          Cost/MT: ${kpi.kwh_per_mt.toFixed(2)} ${kpi.prd_cost_target_met ? '✓' : '✗'} (target &lt; ${kpi.prd_kwh_per_mt_target || 140})<br>
-          Hari ops: ${kpi.operating_days} ${kpi.prd_days_target_met ? '✓' : '✗'} (≤ ${Math.floor((kpi.manual_days_estimate || 22) * 0.7)} · turun ${kpi.days_reduction_pct || 0}%)
+        <div class="kpi-big-sub" style="color:var(--text-lo);margin-top:12px;line-height:1.7;font-size:11px">
+          Cost/MT: ${kpi.kwh_per_mt.toFixed(2)} ${kpi.prd_cost_target_met ? '✓' : '✗'}<br>
+          Hari ops: ${kpi.operating_days} ${kpi.prd_days_target_met ? '✓' : '✗'}
         </div>
       </div>
     </div>
@@ -1288,28 +2503,202 @@ function renderKpiPage(data) {
       </div>
     </div>
 
-    <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px">
-      <div style="font-size:13px;font-weight:600;color:var(--text-hi);margin-bottom:14px">Detail Perbandingan AI vs Manual</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+    <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.05)">
+      <div style="font-size:13px;font-weight:700;color:var(--text-hi);margin-bottom:16px;text-transform:uppercase;letter-spacing:0.05em">Detail Perbandingan AI vs Manual</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
         ${[
           ['Total kWh (AI)', fmt(kpi.total_kwh) + ' kWh', 'var(--green)'],
-          ['Total kWh (Manual est.)', fmt(kpi.manual_kwh_estimate) + ' kWh', 'var(--text-mid)'],
-          ['Hari Operasional (AI)', kpi.operating_days + ' hari', 'var(--green)'],
-          ['Hari Operasional (Manual)', (kpi.manual_days_estimate || 22) + ' hari', 'var(--text-mid)'],
+          ['Total kWh (Manual)', fmt(kpi.manual_kwh_estimate) + ' kWh', 'var(--text-mid)'],
+          ['Hari Ops (AI)', kpi.operating_days + ' hari', 'var(--green)'],
+          ['Hari Ops (Manual)', (kpi.manual_days_estimate || 22) + ' hari', 'var(--text-mid)'],
         ].map(([label, val, color]) => `
-          <div style="background:var(--bg-raised);border-radius:var(--r-md);padding:14px">
-            <div style="font-size:11px;color:var(--text-lo);margin-bottom:6px">${label}</div>
-            <div style="font-family:var(--mono);font-size:18px;font-weight:500;color:${color}">${val}</div>
+          <div style="background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--r-md);padding:14px">
+            <div style="font-size:11px;color:var(--text-lo);margin-bottom:8px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">${label}</div>
+            <div style="font-family:var(--mono);font-size:18px;font-weight:700;color:${color}">${val}</div>
           </div>`).join('')}
       </div>
-      <div style="margin-top:14px;font-size:12px;color:var(--text-mid)">
-        Penghematan biaya listrik estimasi: <strong style="color:var(--green)">Rp ${fmtRp(kpi.saving_rp || 0)}</strong>
-        (tarif industri Rp ${fmtRp(kpi.tariff_rp_per_kwh || 1525)}/kWh)
+      <div style="margin-top:16px;font-size:12px;color:var(--text-mid);padding-top:16px;border-top:1px solid var(--border)">
+        <span style="font-weight:600">Penghematan biaya listrik:</span> <strong style="color:var(--green)">Rp ${fmtRp(kpi.saving_rp || 0)}</strong>
+        <div style="margin-top:6px;font-size:11px;color:var(--text-lo)">Tarif industri: Rp ${fmtRp(kpi.tariff_rp_per_kwh || 1525)}/kWh</div>
       </div>
     </div>`;
 
-  document.getElementById('kpiEmpty').style.display   = 'none';
+  document.getElementById('kpiEmpty').style.display = 'none';
   document.getElementById('kpiContent').style.display = 'block';
+}
+
+// ── Export Excel ──────────────────────────────────────────────────────────────
+function exportToExcel() {
+  if (!lastSchedule) {
+    showToast('Tidak ada jadwal untuk diekspor', 'error');
+    return;
+  }
+
+  if (typeof XLSX === 'undefined') {
+    showToast('Library Excel belum termuat. Periksa koneksi internet lalu coba lagi.', 'error');
+    return;
+  }
+
+  try {
+    const { schedule = [], kpi = {}, month = new Date().toISOString().slice(0, 7) } = lastSchedule;
+    const [yr, mo] = String(month).split('-');
+    const monthName = new Date(Number(yr), Number(mo) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+
+    const num = (value, fallback = 0) => {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : fallback;
+    };
+    const fixed = (value, digits = 2) => num(value).toFixed(digits);
+
+    const wb = XLSX.utils.book_new();
+
+    // === Sheet 1: Summary/KPI ===
+    const kpiData = [
+      ['KERRY AI PRODUCTION SCHEDULING REPORT', '', '', ''],
+      ['', '', '', ''],
+      ['Bulan', monthName, '', ''],
+      ['', '', '', ''],
+      ['KPI SUMMARY', '', '', ''],
+      ['Metrik', 'Nilai', 'Target/Keterangan', ''],
+      ['Total Konsumsi Listrik (kWh)', num(kpi.total_kwh), 'Actual', ''],
+      ['Total Material (MT)', num(kpi.total_mt), '', ''],
+      ['Efisiensi (kWh/MT)', fixed(kpi.kwh_per_mt), '< 140', kpi.prd_cost_target_met ? '✓' : '✗'],
+      ['Hari Operasional', num(kpi.operating_days), '≤ 15', kpi.prd_days_target_met ? '✓' : '✗'],
+      ['', '', '', ''],
+      ['PENGHEMATAN VS JADWAL MANUAL', '', '', ''],
+      ['Manual Estimate (kWh)', num(kpi.manual_kwh_estimate), '', ''],
+      ['Penghematan (kWh)', num(kpi.saving_kwh), '', ''],
+      ['Penghematan (%)', num(kpi.saving_pct) + '%', '', ''],
+      ['Penghematan (Rp)', 'Rp ' + fmtRp(kpi.saving_rp || 0), '', ''],
+      ['Days Reduction', Math.max(22 - num(kpi.operating_days), 0) + ' hari', '', ''],
+      ['', '', '', ''],
+      ['ACCEPTANCE CRITERIA', '', '', ''],
+      ['Status', kpi.prd_kpi_target_met ? 'PASS' : 'FAIL', '', kpi.prd_kpi_target_met ? '✓' : '✗'],
+    ];
+
+    const ws1 = XLSX.utils.aoa_to_sheet(kpiData);
+    ws1['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 25 }, { wch: 8 }];
+    XLSX.utils.book_append_sheet(wb, ws1, 'KPI Summary');
+
+    // === Sheet 2: Jadwal Detail ===
+    const scheduleHeaders = ['No', 'Mesin', 'Tipe', 'Produk', 'Label', 'Step', 'Qty (MT)', 'Shift', 'Mulai', 'Selesai', 'kWh', 'kWh/MT', 'Instruksi Operator'];
+    const scheduleData = schedule.map((row, idx) => [
+      idx + 1,
+      row.machine_id ?? '',
+      row.machine_type ?? '',
+      row.product_id ?? '',
+      row.product_label ?? '',
+      num(row.route_step),
+      num(row.quantity_mt),
+      row.shift ?? '',
+      row.start_date ?? '',
+      row.end_date ?? '',
+      num(row.predicted_kwh),
+      fixed(row.kwh_per_mt),
+      row.instruction ?? '',
+    ]);
+
+    const ws2 = XLSX.utils.aoa_to_sheet([scheduleHeaders, ...scheduleData]);
+    ws2['!cols'] = [
+      { wch: 5 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 20 },
+      { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 },
+      { wch: 10 }, { wch: 10 }, { wch: 40 },
+    ];
+
+    for (let i = 0; i < scheduleHeaders.length; i++) {
+      const cellRef = XLSX.utils.encode_col(i) + '1';
+      if (ws2[cellRef]) {
+        ws2[cellRef].s = {
+          fill: { fgColor: { rgb: 'FF059669' } },
+          font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+          alignment: { horizontal: 'center', vertical: 'center' },
+        };
+      }
+    }
+    XLSX.utils.book_append_sheet(wb, ws2, 'Jadwal Produksi');
+
+    // === Sheet 3: Breakdown Mesin ===
+    const machAgg = {};
+    schedule.forEach(row => {
+      const machineId = row.machine_id ?? 'Unknown';
+      if (!machAgg[machineId]) {
+        machAgg[machineId] = { label: row.machine_label ?? '', type: row.machine_type ?? '', kwh: 0, hrs: 0, sessions: 0 };
+      }
+      machAgg[machineId].kwh += num(row.predicted_kwh);
+      machAgg[machineId].hrs += num(row.operating_hours);
+      machAgg[machineId].sessions++;
+    });
+
+    const machData = [
+      ['Mesin', 'Tipe', 'Total kWh', 'Total Jam', 'Sesi', 'Rata-rata kWh/Sesi'],
+      ...Object.entries(machAgg).map(([mid, v]) => [
+        mid, v.type, v.kwh.toFixed(1), v.hrs.toFixed(1), v.sessions,
+        v.sessions ? (v.kwh / v.sessions).toFixed(1) : '0.0',
+      ]),
+    ];
+    const ws3 = XLSX.utils.aoa_to_sheet(machData);
+    ws3['!cols'] = [{ wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 18 }];
+    for (let i = 0; i < 6; i++) {
+      const cellRef = XLSX.utils.encode_col(i) + '1';
+      if (ws3[cellRef]) ws3[cellRef].s = {
+        fill: { fgColor: { rgb: 'FF059669' } },
+        font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+      };
+    }
+    XLSX.utils.book_append_sheet(wb, ws3, 'Breakdown Mesin');
+
+    // === Sheet 4: Breakdown Produk ===
+    const prodAgg = {};
+    schedule.forEach(row => {
+      const productId = row.product_id ?? 'Unknown';
+      if (!prodAgg[productId]) {
+        prodAgg[productId] = { label: row.product_label ?? '', kwh: 0, qty: 0, sessions: 0 };
+      }
+      prodAgg[productId].kwh += num(row.predicted_kwh);
+      prodAgg[productId].qty = num(row.quantity_mt);
+      prodAgg[productId].sessions++;
+    });
+
+    const prodData = [
+      ['Produk', 'Label', 'Total kWh', 'Total MT', 'Sesi', 'kWh/MT'],
+      ...Object.entries(prodAgg).map(([pid, v]) => [
+        pid, v.label, v.kwh.toFixed(1), v.qty, v.sessions,
+        v.qty ? (v.kwh / v.qty).toFixed(2) : '0.00',
+      ]),
+    ];
+    const ws4 = XLSX.utils.aoa_to_sheet(prodData);
+    ws4['!cols'] = [{ wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 }];
+    for (let i = 0; i < 6; i++) {
+      const cellRef = XLSX.utils.encode_col(i) + '1';
+      if (ws4[cellRef]) ws4[cellRef].s = {
+        fill: { fgColor: { rgb: 'FF059669' } },
+        font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+      };
+    }
+    XLSX.utils.book_append_sheet(wb, ws4, 'Breakdown Produk');
+
+    // Use an explicit Blob download instead of relying only on XLSX.writeFile.
+    // This is more reliable in localhost/file:// browser contexts.
+    const fileName = `Kerry_Jadwal_${month}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const workbookArray = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([workbookArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    showToast('Laporan Excel berhasil diunduh!', 'success');
+  } catch (err) {
+    console.error('Excel export error:', err);
+    showToast('Gagal membuat file Excel: ' + (err.message || 'Unknown error'), 'error');
+  }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1319,21 +2708,6 @@ function fmtDate(str) {
   if (!str) return '—';
   const d = new Date(str);
   return d.toLocaleDateString('id-ID', { day:'2-digit', month:'short' });
-}
-
-async function approveSchedule(orderId) {
-  try {
-    const res = await apiFetch(`/api/schedule/${orderId}/approve`, { method: 'POST' });
-    if (lastSchedule && lastSchedule.order_id === orderId) {
-      lastSchedule.approval_status = 'approved';
-      (lastSchedule.schedule || []).forEach(r => { r.status = 'approved'; });
-      renderResults(lastSchedule);
-      renderKpiPage(lastSchedule);
-    }
-    showToast(res.message || 'Jadwal disetujui', 'success');
-  } catch (err) {
-    showToast('Gagal approve: ' + err.message, 'error');
-  }
 }
 
 function showToast(msg, type = 'success') {
