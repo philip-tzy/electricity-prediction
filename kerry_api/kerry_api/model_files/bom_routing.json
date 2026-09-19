@@ -1,0 +1,227 @@
+{
+  "generated_at": "2026-09-15 07:17:28",
+  "products": {
+    "P001": {
+      "label": "Produk Standard",
+      "energy_factor": 1.0,
+      "route": [
+        {
+          "step": 1,
+          "machine_type": "Mixer",
+          "hours_per_mt": 0.08,
+          "desc": "Mixing bahan baku standar"
+        },
+        {
+          "step": 2,
+          "machine_type": "Packer",
+          "hours_per_mt": 0.15,
+          "desc": "Packing & sealing"
+        }
+      ]
+    },
+    "P002": {
+      "label": "Produk High-Density",
+      "energy_factor": 1.3,
+      "route": [
+        {
+          "step": 1,
+          "machine_type": "Mixer",
+          "hours_per_mt": 0.1,
+          "desc": "Mixing intensif dengan aditif"
+        },
+        {
+          "step": 2,
+          "machine_type": "Extruder",
+          "hours_per_mt": 0.22,
+          "desc": "Ekstrusi high-pressure"
+        },
+        {
+          "step": 3,
+          "machine_type": "Packer",
+          "hours_per_mt": 0.12,
+          "desc": "Packing khusus high-density"
+        }
+      ]
+    },
+    "P003": {
+      "label": "Produk Lightweight",
+      "energy_factor": 0.82,
+      "route": [
+        {
+          "step": 1,
+          "machine_type": "Mixer",
+          "hours_per_mt": 0.06,
+          "desc": "Mixing ringan"
+        },
+        {
+          "step": 2,
+          "machine_type": "Packer",
+          "hours_per_mt": 0.1,
+          "desc": "Packing reguler"
+        }
+      ]
+    },
+    "P004": {
+      "label": "Produk Premium Roasted",
+      "energy_factor": 1.55,
+      "route": [
+        {
+          "step": 1,
+          "machine_type": "Mixer",
+          "hours_per_mt": 0.09,
+          "desc": "Pre-mixing bahan premium"
+        },
+        {
+          "step": 2,
+          "machine_type": "Roaster",
+          "hours_per_mt": 0.35,
+          "desc": "Roasting suhu tinggi — step terlama"
+        },
+        {
+          "step": 3,
+          "machine_type": "Extruder",
+          "hours_per_mt": 0.18,
+          "desc": "Ekstrusi pasca-roasting"
+        },
+        {
+          "step": 4,
+          "machine_type": "Packer",
+          "hours_per_mt": 0.14,
+          "desc": "Packing premium"
+        },
+        {
+          "step": 5,
+          "machine_type": "Palletizer",
+          "hours_per_mt": 0.07,
+          "desc": "Palletizing untuk ekspor"
+        }
+      ]
+    },
+    "P005": {
+      "label": "Produk Economy",
+      "energy_factor": 0.9,
+      "route": [
+        {
+          "step": 1,
+          "machine_type": "Mixer",
+          "hours_per_mt": 0.07,
+          "desc": "Mixing economy grade"
+        },
+        {
+          "step": 2,
+          "machine_type": "Packer",
+          "hours_per_mt": 0.11,
+          "desc": "Packing bulk"
+        }
+      ]
+    },
+    "P006": {
+      "label": "Produk Specialty Extruded",
+      "energy_factor": 1.2,
+      "route": [
+        {
+          "step": 1,
+          "machine_type": "Mixer",
+          "hours_per_mt": 0.09,
+          "desc": "Mixing formula specialty"
+        },
+        {
+          "step": 2,
+          "machine_type": "Extruder",
+          "hours_per_mt": 0.28,
+          "desc": "Ekstrusi pola khusus"
+        },
+        {
+          "step": 3,
+          "machine_type": "Packer",
+          "hours_per_mt": 0.13,
+          "desc": "Packing specialty"
+        },
+        {
+          "step": 4,
+          "machine_type": "Palletizer",
+          "hours_per_mt": 0.06,
+          "desc": "Palletizing otomatis"
+        }
+      ]
+    },
+    "P007": {
+      "label": "Produk Full-Process",
+      "energy_factor": 1.45,
+      "route": [
+        {
+          "step": 1,
+          "machine_type": "Mixer",
+          "hours_per_mt": 0.1,
+          "desc": "Mixing multi-komponen"
+        },
+        {
+          "step": 2,
+          "machine_type": "Roaster",
+          "hours_per_mt": 0.3,
+          "desc": "Roasting medium"
+        },
+        {
+          "step": 3,
+          "machine_type": "Extruder",
+          "hours_per_mt": 0.2,
+          "desc": "Ekstrusi medium"
+        },
+        {
+          "step": 4,
+          "machine_type": "Packer",
+          "hours_per_mt": 0.15,
+          "desc": "Packing multi-layer"
+        },
+        {
+          "step": 5,
+          "machine_type": "Palletizer",
+          "hours_per_mt": 0.08,
+          "desc": "Palletizing + wrapping"
+        }
+      ]
+    }
+  },
+  "machines": {
+    "M001": {
+      "base_power_kw": 120,
+      "efficiency": 0.92,
+      "type": "Mixer"
+    },
+    "M002": {
+      "base_power_kw": 180,
+      "efficiency": 0.89,
+      "type": "Roaster"
+    },
+    "M003": {
+      "base_power_kw": 160,
+      "efficiency": 0.91,
+      "type": "Extruder"
+    },
+    "M004": {
+      "base_power_kw": 75,
+      "efficiency": 0.94,
+      "type": "Packer"
+    },
+    "M005": {
+      "base_power_kw": 210,
+      "efficiency": 0.87,
+      "type": "Palletizer"
+    },
+    "M006": {
+      "base_power_kw": 130,
+      "efficiency": 0.9,
+      "type": "Mixer"
+    },
+    "M007": {
+      "base_power_kw": 175,
+      "efficiency": 0.88,
+      "type": "Roaster"
+    },
+    "M008": {
+      "base_power_kw": 85,
+      "efficiency": 0.93,
+      "type": "Packer"
+    }
+  }
+}
