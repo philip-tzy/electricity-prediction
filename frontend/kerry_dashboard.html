@@ -7,7 +7,27 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
+<script>
+(function loadSheetJS() {
+  var sources = [
+    '/static/lib/xlsx-js-style.min.js',
+    'lib/xlsx-js-style.min.js',
+    'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.min.js',
+    '/static/lib/xlsx.full.min.js',
+    'lib/xlsx.full.min.js'
+  ];
+  function tryNext(i) {
+    if (typeof XLSX !== 'undefined' || i >= sources.length) return;
+    var s = document.createElement('script');
+    s.src = sources[i];
+    s.async = false;
+    s.onload = function () { /* ready for export */ };
+    s.onerror = function () { tryNext(i + 1); };
+    document.head.appendChild(s);
+  }
+  tryNext(0);
+})();
+</script>
 <style>
 /* ── Reset & tokens ─────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -368,6 +388,27 @@ html, body {
   padding: 16px 4px 8px;
 }
 
+.nav-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0 2px 0 10px;
+  min-height: 28px;
+}
+
+.nav-section-header .nav-label {
+  margin-bottom: 0;
+  padding: 0;
+}
+
+.sidebar.collapsed .nav-section-header {
+  justify-content: center;
+  padding: 0;
+  margin-bottom: 8px;
+}
+
 .nav-label { 
   font-size: 10px; 
   font-weight: 700; 
@@ -507,15 +548,17 @@ html, body {
 .sidebar-collapse-toggle {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  width: 100%;
-  min-height: 44px;
-  padding: 8px 12px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-height: 0;
+  padding: 0;
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-radius: var(--r-sm);
   background: transparent;
   color: var(--text-lo);
   cursor: pointer;
+  flex-shrink: 0;
   transition: var(--transition-ease);
 }
 
@@ -526,12 +569,11 @@ html, body {
 
 .sidebar.collapsed .sidebar-collapse-toggle {
   justify-content: center;
-  padding: 8px;
 }
 
 .sidebar-collapse-toggle svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   transition: transform 0.3s ease;
 }
 
@@ -868,6 +910,92 @@ html, body {
 .kpi-good { color: var(--green); font-weight: 600; }
 .kpi-warn { color: var(--amber); font-weight: 600; }
 .kpi-neutral { color: var(--text-lo); }
+
+/* ── Result tabs (Gantt / Instruksi) ─────────────────────────── */
+.result-tabs {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: 28px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.result-tab-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 0 12px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.result-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--text-lo);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 14px 16px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: var(--transition-ease);
+}
+
+.result-tab:hover {
+  color: var(--text-hi);
+  background: var(--bg-hover);
+}
+
+.result-tab.active {
+  color: var(--green);
+  border-bottom-color: var(--green);
+  background: var(--bg-surface);
+}
+
+.result-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mono);
+  background: var(--bg-hover);
+  color: var(--text-mid);
+}
+
+.result-tab.active .result-tab-count {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.result-tab-panel {
+  display: none;
+}
+
+.result-tab-panel.active {
+  display: block;
+}
+
+.result-tab-panel .gantt-wrap,
+.result-tab-panel .sched-wrap {
+  margin-bottom: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
 
 /* ── Gantt chart ─────────────────────────────────────────────── */
 .gantt-wrap { 
@@ -1207,9 +1335,15 @@ tbody td {
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
 }
 
-.btn-export:hover {
+.btn-export:hover:not(:disabled) {
   background: #1d4ed8;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+
+.btn-export:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .kpi-grid-big { 
@@ -1521,13 +1655,15 @@ tbody td {
 
   <!-- ── SIDEBAR ─────────────────────────────────────────────── -->
   <aside class="sidebar" id="sidebar">
-    <button class="sidebar-collapse-toggle" id="sidebarCollapseToggle" type="button" title="Tutup sidebar" aria-label="Tutup sidebar" aria-expanded="true">
-      <svg id="sidebarCollapseIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="15 18 9 12 15 6"></polyline>
-      </svg>
-    </button>
     <div class="nav-section">
-      <div class="nav-label">Menu</div>
+      <div class="nav-section-header">
+        <div class="nav-label">Menu</div>
+        <button class="sidebar-collapse-toggle" id="sidebarCollapseToggle" type="button" title="Tutup sidebar" aria-label="Tutup sidebar" aria-expanded="true">
+          <svg id="sidebarCollapseIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+      </div>
       <div class="nav-item active" onclick="switchPage('generate')" id="nav-generate">
         <svg class="nav-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
           <rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/>
@@ -1621,11 +1757,11 @@ tbody td {
       <div class="kpi-page">
         <div class="kpi-page-header">
           <div class="kpi-page-title">KPI & Laporan Penghematan</div>
-          <button class="btn-export" id="btnExportExcel" onclick="exportToExcel()" style="display:none">
+          <button class="btn-export" id="btnExportExcel" onclick="exportToExcel()" style="display:none" disabled title="Generate jadwal terlebih dahulu">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-            Download Excel
+            <span id="btnExportExcelLabel">Download Excel</span>
           </button>
         </div>
 
@@ -1876,7 +2012,21 @@ function switchPage(name) {
     document.getElementById('mobileOverlay')?.classList.remove('show');
   }
 
-  document.getElementById('btnExportExcel').style.display = (name === 'kpi' && lastSchedule) ? 'flex' : 'none';
+  updateExportButton();
+}
+
+function updateExportButton() {
+  const btn = document.getElementById('btnExportExcel');
+  const label = document.getElementById('btnExportExcelLabel');
+  if (!btn) return;
+
+  const onKpi = document.getElementById('page-kpi')?.classList.contains('active');
+  btn.style.display = onKpi ? 'flex' : 'none';
+
+  const ready = Boolean(lastSchedule);
+  btn.disabled = !ready;
+  btn.title = ready ? 'Download laporan Excel' : 'Generate jadwal terlebih dahulu';
+  if (label && !btn.dataset.busy) label.textContent = 'Download Excel';
 }
 
 // ── Order form ────────────────────────────────────────────────────────────────
@@ -2183,6 +2333,7 @@ async function generateSchedule() {
     renderResults(data);
     renderKpiPage(data);
     updateSidebarFromSchedule(data);
+    updateExportButton();
     showToast('Jadwal berhasil digenerate!', 'success');
 
   } catch (err) {
@@ -2289,26 +2440,52 @@ function renderResults(data) {
       <div style="font-size:12px;color:var(--text-lo)">Dibuat: ${new Date(data.generated_at).toLocaleString('id-ID')}</div>
     </div>
     ${kpiBar}
-    ${gantt}
-    <div class="sched-wrap">
-      <div class="sched-header">
-        <div class="sched-title">Instruksi Jadwal Operator</div>
-        <div style="font-size:11px;color:var(--text-lo)">${schedule.length} sesi mesin</div>
+    <div class="result-tabs">
+      <div class="result-tab-bar" role="tablist">
+        <button type="button" class="result-tab active" role="tab" aria-selected="true" data-tab="gantt" onclick="switchResultTab('gantt')">
+          Gantt Chart
+        </button>
+        <button type="button" class="result-tab" role="tab" aria-selected="false" data-tab="schedule" onclick="switchResultTab('schedule')">
+          Instruksi Jadwal Operator
+          <span class="result-tab-count">${schedule.length}</span>
+        </button>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>Mesin</th><th>Tipe</th><th>Produk</th><th>Label</th>
-            <th style="text-align:center">Step</th><th>Qty</th><th>Shift</th>
-            <th>Mulai</th><th>Selesai</th><th>kWh</th><th>Instruksi</th>
-          </tr></thead>
-          <tbody>${tableRows}</tbody>
-        </table>
+      <div class="result-tab-panel active" id="tab-gantt" role="tabpanel">
+        ${gantt}
+      </div>
+      <div class="result-tab-panel" id="tab-schedule" role="tabpanel">
+        <div class="sched-wrap">
+          <div class="sched-header">
+            <div class="sched-title">Instruksi Jadwal Operator</div>
+            <div style="font-size:11px;color:var(--text-lo)">${schedule.length} sesi mesin</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Mesin</th><th>Tipe</th><th>Produk</th><th>Label</th>
+                <th style="text-align:center">Step</th><th>Qty</th><th>Shift</th>
+                <th>Mulai</th><th>Selesai</th><th>kWh</th><th>Instruksi</th>
+              </tr></thead>
+              <tbody>${tableRows}</tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
     ${standbyHtml}`;
 
   document.getElementById('resultContent').style.display = 'block';
+}
+
+function switchResultTab(name) {
+  document.querySelectorAll('.result-tab').forEach(tab => {
+    const active = tab.dataset.tab === name;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  document.querySelectorAll('.result-tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === 'tab-' + name);
+  });
 }
 
 // ── Gantt builder ─────────────────────────────────────────────────────────────
@@ -2528,6 +2705,142 @@ function renderKpiPage(data) {
 }
 
 // ── Export Excel ──────────────────────────────────────────────────────────────
+function downloadBlob(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.rel = 'noopener';
+  link.style.display = 'none';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function excelStyles() {
+  const borderThin = {
+    top: { style: 'thin', color: { rgb: 'CBD5E1' } },
+    bottom: { style: 'thin', color: { rgb: 'CBD5E1' } },
+    left: { style: 'thin', color: { rgb: 'CBD5E1' } },
+    right: { style: 'thin', color: { rgb: 'CBD5E1' } },
+  };
+  return {
+    borderThin,
+    title: {
+      font: { bold: true, sz: 16, color: { rgb: 'FFFFFFFF' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: '059669' } },
+      alignment: { horizontal: 'left', vertical: 'center' },
+    },
+    metaLabel: {
+      font: { bold: true, sz: 11, color: { rgb: '64748B' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } },
+      alignment: { horizontal: 'left', vertical: 'center' },
+      border: borderThin,
+    },
+    metaValue: {
+      font: { bold: true, sz: 11, color: { rgb: '0F172A' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'left', vertical: 'center' },
+      border: borderThin,
+    },
+    section: {
+      font: { bold: true, sz: 12, color: { rgb: 'FFFFFF' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: '0F172A' } },
+      alignment: { horizontal: 'left', vertical: 'center' },
+    },
+    tableHeader: {
+      font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: '059669' } },
+      alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+      border: borderThin,
+    },
+    cellLabel: {
+      font: { sz: 11, color: { rgb: '334155' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'left', vertical: 'center' },
+      border: borderThin,
+    },
+    cellValue: {
+      font: { bold: true, sz: 11, color: { rgb: '0F172A' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'right', vertical: 'center' },
+      border: borderThin,
+    },
+    cellNote: {
+      font: { sz: 10, color: { rgb: '64748B' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'left', vertical: 'center' },
+      border: borderThin,
+    },
+    pass: {
+      font: { bold: true, sz: 11, color: { rgb: '065F46' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: 'D1FAE5' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: borderThin,
+    },
+    fail: {
+      font: { bold: true, sz: 11, color: { rgb: '991B1B' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: 'FEE2E2' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: borderThin,
+    },
+    saving: {
+      font: { bold: true, sz: 11, color: { rgb: '065F46' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: 'ECFDF5' } },
+      alignment: { horizontal: 'right', vertical: 'center' },
+      border: borderThin,
+    },
+    zebra: {
+      font: { sz: 10, color: { rgb: '0F172A' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: 'F8FAFC' } },
+      alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+      border: borderThin,
+    },
+    data: {
+      font: { sz: 10, color: { rgb: '0F172A' }, name: 'Calibri' },
+      fill: { patternType: 'solid', fgColor: { rgb: 'FFFFFF' } },
+      alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+      border: borderThin,
+    },
+  };
+}
+
+function excelSet(ws, r, c, value, style) {
+  const ref = XLSX.utils.encode_cell({ r, c });
+  const isNum = typeof value === 'number' && Number.isFinite(value);
+  ws[ref] = {
+    t: isNum ? 'n' : 's',
+    v: value == null ? '' : value,
+    s: style || undefined,
+  };
+}
+
+function excelEnsureRange(ws, rows, cols) {
+  ws['!ref'] = XLSX.utils.encode_range({
+    s: { r: 0, c: 0 },
+    e: { r: Math.max(rows - 1, 0), c: Math.max(cols - 1, 0) },
+  });
+}
+
+function excelStyleTableSheet(ws, headers, rows, colAlign = []) {
+  const S = excelStyles();
+  headers.forEach((h, c) => excelSet(ws, 0, c, h, S.tableHeader));
+  rows.forEach((row, ri) => {
+    const base = (ri % 2 === 1) ? S.zebra : S.data;
+    row.forEach((val, c) => {
+      const align = colAlign[c] || 'left';
+      let style = base;
+      if (align === 'center') style = { ...base, alignment: { ...base.alignment, horizontal: 'center' } };
+      if (align === 'right') style = { ...base, alignment: { ...base.alignment, horizontal: 'right' } };
+      excelSet(ws, ri + 1, c, val, style);
+    });
+  });
+  excelEnsureRange(ws, rows.length + 1, headers.length);
+  if (!ws['!rows']) ws['!rows'] = [];
+  ws['!rows'][0] = { hpt: 22 };
+}
+
 function exportToExcel() {
   if (!lastSchedule) {
     showToast('Tidak ada jadwal untuk diekspor', 'error');
@@ -2535,173 +2848,254 @@ function exportToExcel() {
   }
 
   if (typeof XLSX === 'undefined') {
-    showToast('Library Excel belum termuat. Periksa koneksi internet lalu coba lagi.', 'error');
+    showToast('Library Excel belum termuat. Muat ulang halaman lalu coba lagi.', 'error');
     return;
   }
 
+  const btn = document.getElementById('btnExportExcel');
+  const label = document.getElementById('btnExportExcelLabel');
+  if (btn?.dataset.busy === '1') return;
+
   try {
-    const { schedule = [], kpi = {}, month = new Date().toISOString().slice(0, 7) } = lastSchedule;
+    if (btn) {
+      btn.dataset.busy = '1';
+      btn.disabled = true;
+    }
+    if (label) label.textContent = 'Menyiapkan...';
+
+    const {
+      schedule = [],
+      kpi = {},
+      month = new Date().toISOString().slice(0, 7),
+      machines_standby = [],
+      order_id = '',
+      generated_at = '',
+    } = lastSchedule;
+
     const [yr, mo] = String(month).split('-');
-    const monthName = new Date(Number(yr), Number(mo) - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    const monthName = new Date(Number(yr), Number(mo) - 1).toLocaleDateString('id-ID', {
+      month: 'long',
+      year: 'numeric',
+    });
 
     const num = (value, fallback = 0) => {
       const n = Number(value);
       return Number.isFinite(n) ? n : fallback;
     };
-    const fixed = (value, digits = 2) => num(value).toFixed(digits);
-
+    const fixedNum = (value, digits = 2) => Number(num(value).toFixed(digits));
+    const S = excelStyles();
     const wb = XLSX.utils.book_new();
+    const daysSaved = num(
+      kpi.days_saved,
+      Math.max(num(kpi.manual_days_estimate, 22) - num(kpi.operating_days), 0)
+    );
+    const overallPass = Boolean(kpi.prd_kpi_target_met);
 
-    // === Sheet 1: Summary/KPI ===
-    const kpiData = [
-      ['KERRY AI PRODUCTION SCHEDULING REPORT', '', '', ''],
-      ['', '', '', ''],
-      ['Bulan', monthName, '', ''],
-      ['', '', '', ''],
-      ['KPI SUMMARY', '', '', ''],
-      ['Metrik', 'Nilai', 'Target/Keterangan', ''],
-      ['Total Konsumsi Listrik (kWh)', num(kpi.total_kwh), 'Actual', ''],
-      ['Total Material (MT)', num(kpi.total_mt), '', ''],
-      ['Efisiensi (kWh/MT)', fixed(kpi.kwh_per_mt), '< 140', kpi.prd_cost_target_met ? '✓' : '✗'],
-      ['Hari Operasional', num(kpi.operating_days), '≤ 15', kpi.prd_days_target_met ? '✓' : '✗'],
-      ['', '', '', ''],
-      ['PENGHEMATAN VS JADWAL MANUAL', '', '', ''],
-      ['Manual Estimate (kWh)', num(kpi.manual_kwh_estimate), '', ''],
-      ['Penghematan (kWh)', num(kpi.saving_kwh), '', ''],
-      ['Penghematan (%)', num(kpi.saving_pct) + '%', '', ''],
-      ['Penghematan (Rp)', 'Rp ' + fmtRp(kpi.saving_rp || 0), '', ''],
-      ['Days Reduction', Math.max(22 - num(kpi.operating_days), 0) + ' hari', '', ''],
-      ['', '', '', ''],
-      ['ACCEPTANCE CRITERIA', '', '', ''],
-      ['Status', kpi.prd_kpi_target_met ? 'PASS' : 'FAIL', '', kpi.prd_kpi_target_met ? '✓' : '✗'],
+    // Sheet 1: KPI Summary
+    const ws1 = {};
+    const COLS = 4;
+
+    excelSet(ws1, 0, 0, 'KERRY AI PRODUCTION SCHEDULING REPORT', S.title);
+    for (let c = 1; c < COLS; c++) excelSet(ws1, 0, c, '', S.title);
+    ws1['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
+      { s: { r: 6, c: 0 }, e: { r: 6, c: 3 } },
+      { s: { r: 13, c: 0 }, e: { r: 13, c: 3 } },
+      { s: { r: 20, c: 0 }, e: { r: 20, c: 3 } },
     ];
 
-    const ws1 = XLSX.utils.aoa_to_sheet(kpiData);
-    ws1['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 25 }, { wch: 8 }];
+    [
+      ['Bulan', monthName],
+      ['Order ID', order_id || '—'],
+      ['Dibuat', generated_at ? new Date(generated_at).toLocaleString('id-ID') : '—'],
+    ].forEach(([k, v], i) => {
+      const r = 2 + i;
+      excelSet(ws1, r, 0, k, S.metaLabel);
+      excelSet(ws1, r, 1, v, S.metaValue);
+      excelSet(ws1, r, 2, '', S.metaValue);
+      excelSet(ws1, r, 3, '', S.metaValue);
+    });
+
+    excelSet(ws1, 6, 0, 'KPI SUMMARY', S.section);
+    for (let c = 1; c < COLS; c++) excelSet(ws1, 6, c, '', S.section);
+    ['Metrik', 'Nilai', 'Target / Keterangan', 'Status'].forEach((h, c) => excelSet(ws1, 7, c, h, S.tableHeader));
+
+    [
+      ['Total Konsumsi Listrik (kWh)', fixedNum(kpi.total_kwh, 2), 'Actual', ''],
+      ['Total Material (MT)', fixedNum(kpi.total_mt, 2), '', ''],
+      ['Efisiensi (kWh/MT)', fixedNum(kpi.kwh_per_mt, 2), `< ${num(kpi.prd_kwh_per_mt_target, 140)}`, kpi.prd_cost_target_met ? 'PASS' : 'FAIL'],
+      ['Hari Operasional', num(kpi.operating_days), '≤ 15', kpi.prd_days_target_met ? 'PASS' : 'FAIL'],
+    ].forEach((row, i) => {
+      const r = 8 + i;
+      excelSet(ws1, r, 0, row[0], S.cellLabel);
+      excelSet(ws1, r, 1, row[1], S.cellValue);
+      excelSet(ws1, r, 2, row[2], S.cellNote);
+      if (row[3] === 'PASS') excelSet(ws1, r, 3, 'PASS', S.pass);
+      else if (row[3] === 'FAIL') excelSet(ws1, r, 3, 'FAIL', S.fail);
+      else excelSet(ws1, r, 3, '', S.cellNote);
+    });
+
+    excelSet(ws1, 13, 0, 'PENGHEMATAN VS JADWAL MANUAL', S.section);
+    for (let c = 1; c < COLS; c++) excelSet(ws1, 13, c, '', S.section);
+
+    [
+      ['Manual Estimate (kWh)', fixedNum(kpi.manual_kwh_estimate, 2), '', false],
+      ['Penghematan (kWh)', fixedNum(kpi.saving_kwh, 2), '', true],
+      ['Penghematan (%)', fixedNum(kpi.saving_pct, 1), '', true],
+      ['Penghematan (Rp)', num(kpi.saving_rp), `Tarif Rp ${fmtRp(kpi.tariff_rp_per_kwh || 1525)}/kWh`, true],
+      ['Days Reduction', daysSaved, `Manual ${num(kpi.manual_days_estimate, 22)} hari`, true],
+    ].forEach((row, i) => {
+      const r = 14 + i;
+      const valueStyle = row[3] ? S.saving : S.cellValue;
+      excelSet(ws1, r, 0, row[0], S.cellLabel);
+      if (row[0] === 'Penghematan (Rp)') excelSet(ws1, r, 1, 'Rp ' + fmtRp(row[1]), valueStyle);
+      else if (row[0] === 'Penghematan (%)') excelSet(ws1, r, 1, row[1] + '%', valueStyle);
+      else if (row[0] === 'Days Reduction') excelSet(ws1, r, 1, row[1] + ' hari', valueStyle);
+      else excelSet(ws1, r, 1, row[1], valueStyle);
+      excelSet(ws1, r, 2, row[2], S.cellNote);
+      excelSet(ws1, r, 3, '', S.cellNote);
+    });
+
+    excelSet(ws1, 20, 0, 'ACCEPTANCE CRITERIA', S.section);
+    for (let c = 1; c < COLS; c++) excelSet(ws1, 20, c, '', S.section);
+    excelSet(ws1, 21, 0, 'Overall Status', S.cellLabel);
+    excelSet(ws1, 21, 1, overallPass ? 'PASS' : 'FAIL', overallPass ? S.pass : S.fail);
+    excelSet(ws1, 21, 2, overallPass ? 'Memenuhi target PRD' : 'Belum memenuhi target PRD', S.cellNote);
+    excelSet(ws1, 21, 3, overallPass ? '✓' : '✗', overallPass ? S.pass : S.fail);
+
+    excelEnsureRange(ws1, 22, COLS);
+    ws1['!cols'] = [{ wch: 34 }, { wch: 18 }, { wch: 30 }, { wch: 12 }];
+    ws1['!rows'] = [{ hpt: 28 }, null, { hpt: 18 }, { hpt: 18 }, { hpt: 18 }, null, { hpt: 22 }];
     XLSX.utils.book_append_sheet(wb, ws1, 'KPI Summary');
 
-    // === Sheet 2: Jadwal Detail ===
-    const scheduleHeaders = ['No', 'Mesin', 'Tipe', 'Produk', 'Label', 'Step', 'Qty (MT)', 'Shift', 'Mulai', 'Selesai', 'kWh', 'kWh/MT', 'Instruksi Operator'];
-    const scheduleData = schedule.map((row, idx) => [
+    // Sheet 2: Jadwal Produksi
+    const scheduleHeaders = [
+      'No', 'Mesin', 'Label Mesin', 'Tipe', 'Produk', 'Label', 'Step',
+      'Qty (MT)', 'Shift', 'Mulai', 'Selesai', 'Jam Ops', 'kWh', 'kWh/MT',
+      'Instruksi Operator', 'WIP Note',
+    ];
+    const scheduleRows = schedule.map((row, idx) => [
       idx + 1,
       row.machine_id ?? '',
+      row.machine_label ?? '',
       row.machine_type ?? '',
       row.product_id ?? '',
       row.product_label ?? '',
       num(row.route_step),
-      num(row.quantity_mt),
+      fixedNum(row.quantity_mt, 2),
       row.shift ?? '',
       row.start_date ?? '',
       row.end_date ?? '',
-      num(row.predicted_kwh),
-      fixed(row.kwh_per_mt),
+      fixedNum(row.operating_hours, 1),
+      fixedNum(row.predicted_kwh, 2),
+      fixedNum(row.kwh_per_mt, 2),
       row.instruction ?? '',
+      row.wip_note ?? '',
     ]);
-
-    const ws2 = XLSX.utils.aoa_to_sheet([scheduleHeaders, ...scheduleData]);
+    const ws2 = {};
+    excelStyleTableSheet(
+      ws2,
+      scheduleHeaders,
+      scheduleRows,
+      ['center', 'center', 'left', 'center', 'center', 'left', 'center', 'right', 'center', 'center', 'center', 'right', 'right', 'right', 'left', 'left']
+    );
     ws2['!cols'] = [
-      { wch: 5 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 20 },
+      { wch: 5 }, { wch: 9 }, { wch: 18 }, { wch: 12 }, { wch: 9 }, { wch: 20 },
       { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 12 },
-      { wch: 10 }, { wch: 10 }, { wch: 40 },
+      { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 44 }, { wch: 24 },
     ];
-
-    for (let i = 0; i < scheduleHeaders.length; i++) {
-      const cellRef = XLSX.utils.encode_col(i) + '1';
-      if (ws2[cellRef]) {
-        ws2[cellRef].s = {
-          fill: { fgColor: { rgb: 'FF059669' } },
-          font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-          alignment: { horizontal: 'center', vertical: 'center' },
-        };
-      }
-    }
     XLSX.utils.book_append_sheet(wb, ws2, 'Jadwal Produksi');
 
-    // === Sheet 3: Breakdown Mesin ===
+    // Sheet 3: Breakdown Mesin
     const machAgg = {};
     schedule.forEach(row => {
       const machineId = row.machine_id ?? 'Unknown';
       if (!machAgg[machineId]) {
-        machAgg[machineId] = { label: row.machine_label ?? '', type: row.machine_type ?? '', kwh: 0, hrs: 0, sessions: 0 };
+        machAgg[machineId] = {
+          label: row.machine_label ?? '',
+          type: row.machine_type ?? '',
+          kwh: 0,
+          hrs: 0,
+          sessions: 0,
+        };
       }
       machAgg[machineId].kwh += num(row.predicted_kwh);
       machAgg[machineId].hrs += num(row.operating_hours);
       machAgg[machineId].sessions++;
     });
-
-    const machData = [
-      ['Mesin', 'Tipe', 'Total kWh', 'Total Jam', 'Sesi', 'Rata-rata kWh/Sesi'],
-      ...Object.entries(machAgg).map(([mid, v]) => [
-        mid, v.type, v.kwh.toFixed(1), v.hrs.toFixed(1), v.sessions,
-        v.sessions ? (v.kwh / v.sessions).toFixed(1) : '0.0',
-      ]),
-    ];
-    const ws3 = XLSX.utils.aoa_to_sheet(machData);
-    ws3['!cols'] = [{ wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 18 }];
-    for (let i = 0; i < 6; i++) {
-      const cellRef = XLSX.utils.encode_col(i) + '1';
-      if (ws3[cellRef]) ws3[cellRef].s = {
-        fill: { fgColor: { rgb: 'FF059669' } },
-        font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-        alignment: { horizontal: 'center', vertical: 'center' },
-      };
-    }
+    const machRows = Object.entries(machAgg).map(([mid, v]) => [
+      mid, v.label, v.type,
+      Number(v.kwh.toFixed(1)), Number(v.hrs.toFixed(1)), v.sessions,
+      v.sessions ? Number((v.kwh / v.sessions).toFixed(1)) : 0,
+    ]);
+    const ws3 = {};
+    excelStyleTableSheet(
+      ws3,
+      ['Mesin', 'Label', 'Tipe', 'Total kWh', 'Total Jam', 'Sesi', 'Rata-rata kWh/Sesi'],
+      machRows,
+      ['center', 'left', 'center', 'right', 'right', 'center', 'right']
+    );
+    ws3['!cols'] = [{ wch: 10 }, { wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 18 }];
     XLSX.utils.book_append_sheet(wb, ws3, 'Breakdown Mesin');
 
-    // === Sheet 4: Breakdown Produk ===
+    // Sheet 4: Breakdown Produk
     const prodAgg = {};
     schedule.forEach(row => {
       const productId = row.product_id ?? 'Unknown';
       if (!prodAgg[productId]) {
-        prodAgg[productId] = { label: row.product_label ?? '', kwh: 0, qty: 0, sessions: 0 };
+        prodAgg[productId] = { label: row.product_label ?? '', kwh: 0, qty: num(row.quantity_mt), sessions: 0 };
       }
       prodAgg[productId].kwh += num(row.predicted_kwh);
-      prodAgg[productId].qty = num(row.quantity_mt);
       prodAgg[productId].sessions++;
     });
-
-    const prodData = [
+    const prodRows = Object.entries(prodAgg).map(([pid, v]) => [
+      pid, v.label, Number(v.kwh.toFixed(1)), v.qty, v.sessions,
+      v.qty ? Number((v.kwh / v.qty).toFixed(2)) : 0,
+    ]);
+    const ws4 = {};
+    excelStyleTableSheet(
+      ws4,
       ['Produk', 'Label', 'Total kWh', 'Total MT', 'Sesi', 'kWh/MT'],
-      ...Object.entries(prodAgg).map(([pid, v]) => [
-        pid, v.label, v.kwh.toFixed(1), v.qty, v.sessions,
-        v.qty ? (v.kwh / v.qty).toFixed(2) : '0.00',
-      ]),
-    ];
-    const ws4 = XLSX.utils.aoa_to_sheet(prodData);
-    ws4['!cols'] = [{ wch: 12 }, { wch: 25 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 12 }];
-    for (let i = 0; i < 6; i++) {
-      const cellRef = XLSX.utils.encode_col(i) + '1';
-      if (ws4[cellRef]) ws4[cellRef].s = {
-        fill: { fgColor: { rgb: 'FF059669' } },
-        font: { bold: true, color: { rgb: 'FFFFFFFF' } },
-        alignment: { horizontal: 'center', vertical: 'center' },
-      };
-    }
+      prodRows,
+      ['center', 'left', 'right', 'right', 'center', 'right']
+    );
+    ws4['!cols'] = [{ wch: 10 }, { wch: 26 }, { wch: 12 }, { wch: 12 }, { wch: 8 }, { wch: 10 }];
     XLSX.utils.book_append_sheet(wb, ws4, 'Breakdown Produk');
 
-    // Use an explicit Blob download instead of relying only on XLSX.writeFile.
-    // This is more reliable in localhost/file:// browser contexts.
-    const fileName = `Kerry_Jadwal_${month}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    const workbookArray = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([workbookArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = fileName;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    // Sheet 5: Mesin Standby
+    const standbyList = (machines_standby || []).map(s =>
+      typeof s === 'string'
+        ? { machine_id: s, machine_label: '', machine_type: '', reason: 'Standby' }
+        : s
+    );
+    const standbyRows = standbyList.length
+      ? standbyList.map(s => [s.machine_id ?? '', s.machine_label ?? '', s.machine_type ?? '', s.reason ?? 'Standby'])
+      : [['—', '', '', 'Tidak ada mesin standby']];
+    const ws5 = {};
+    excelStyleTableSheet(ws5, ['Mesin', 'Label', 'Tipe', 'Alasan'], standbyRows, ['center', 'left', 'center', 'left']);
+    ws5['!cols'] = [{ wch: 10 }, { wch: 22 }, { wch: 12 }, { wch: 55 }];
+    XLSX.utils.book_append_sheet(wb, ws5, 'Mesin Standby');
+
+    const fileName = `Kerry_Laporan_${month}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const workbookArray = XLSX.write(wb, { bookType: 'xlsx', type: 'array', cellStyles: true });
+    const bytes = workbookArray instanceof Uint8Array ? workbookArray : new Uint8Array(workbookArray);
+    const blob = new Blob([bytes], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    downloadBlob(blob, fileName);
 
     showToast('Laporan Excel berhasil diunduh!', 'success');
   } catch (err) {
     console.error('Excel export error:', err);
     showToast('Gagal membuat file Excel: ' + (err.message || 'Unknown error'), 'error');
+  } finally {
+    if (btn) {
+      btn.dataset.busy = '0';
+      updateExportButton();
+    }
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function fmt(n) { return Number(n).toLocaleString('id-ID', { maximumFractionDigits: 1 }); }
 function fmtRp(n) { return Number(n || 0).toLocaleString('id-ID', { maximumFractionDigits: 0 }); }
 function fmtDate(str) {
