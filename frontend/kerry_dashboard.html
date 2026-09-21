@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Kerry AI — Production Scheduling</title>
+<link rel="icon" type="image/png" href="/static/kerry-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
@@ -174,14 +175,18 @@ html, body {
   width: 36px; 
   height: 36px; 
   border-radius: var(--r-sm);
-  background: var(--green); 
+  background: transparent; 
   display: flex; 
   align-items: center; 
   justify-content: center;
-  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.2);
 }
 
-.logo-mark svg { width: 20px; height: 20px; }
+.logo-mark img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  display: block;
+}
 
 .logo-wordmark { 
   font-size: 16px; 
@@ -1629,10 +1634,7 @@ tbody td {
 
     <div class="header-logo">
       <div class="logo-mark">
-        <svg viewBox="0 0 16 16" fill="none">
-          <path d="M8 2L14 5.5V10.5L8 14L2 10.5V5.5L8 2Z" stroke="currentColor" stroke-width="1.5" fill="none"/>
-          <path d="M8 5L11 6.75V10.25L8 12L5 10.25V6.75L8 5Z" fill="currentColor"/>
-        </svg>
+        <img src="/static/kerry-logo.png" alt="Kerry Logo"/>
       </div>
       <div>
         <div class="logo-wordmark">Kerry AI</div>
